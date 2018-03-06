@@ -23,11 +23,6 @@ Please review the
 ```julia
 julia> using AWSBatch
 
-julia> using Memento
-
-julia> Memento.config("info"; fmt="[{level} | {name}]: {msg}")
-Logger(root)
-
 julia> job = BatchJob(
            name="Demo",
            definition="AWSBatchJobDefinition",
@@ -43,24 +38,19 @@ julia> job = BatchJob(
 AWSBatch.BatchJob("", "Demo", AWSBatch.BatchJobDefinition("AWSBatchJobDefinition"), "AWSBatchJobQueue", "", AWSBatch.BatchJobContainer("000000000000.dkr.ecr.us-east-1.amazonaws.com/demo:latest", 1, 1024, "arn:aws:iam::000000000000:role/AWSBatchJobRole", `julia -e 'println("Hello World!")'`))
 
 julia> submit(job)
-[info | AWSBatch]: Registered job definition arn:aws:batch:us-east-1:000000000000:job-definition/AWSBatchJobDefinition:1.
-[info | AWSBatch]: Submitted job Demo::00000000-0000-0000-0000-000000000000.
 Dict{String,Any} with 2 entries:
   "jobId"   => "00000000-0000-0000-0000-000000000000"
   "jobName" => "Demo"
 
 julia> wait(job, [AWSBatch.SUCCEEDED])
-[info | AWSBatch]: Demo::00000000-0000-0000-0000-000000000000 status SUBMITTED
-[info | AWSBatch]: Demo::00000000-0000-0000-0000-000000000000 status STARTING
-[info | AWSBatch]: Demo::00000000-0000-0000-0000-000000000000 status SUCCEEDED
 true
 
 julia> results = logs(job)
-[info | AWSBatch]: Fetching log events from Demo/default/00000000-0000-0000-0000-000000000000
-[info | AWSBatch]: Hello World!
 1-element Array{Any,1}:
  Dict{String,Any}(Pair{String,Any}("ingestionTime", 1505846649863),Pair{String,Any}("message", "Hello World!"),Pair{String,Any}("timestamp", 1505846649786),Pair{String,Any}("eventId", "00000000000000000000000000000000000000000000000000000000"))
 ```
+
+AWSBatch also supports Memento logging for more detailed usage information.
 
 ## Public API
 
