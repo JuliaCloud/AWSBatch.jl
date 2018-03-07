@@ -313,11 +313,12 @@ end
     submit(job::BatchJob) -> Dict
 
 Handles submitting the batch job and registering a new job definition if necessary.
-If no valid job definition exists (see `AWSBatch.lookupARN`) then a new job definition will be
-created. Once the job has been submitted this function will return the response dictionary.
+If no valid job definition exists (see `AWSBatch.job_definition_arn`) then a new job
+definition will be created. Once the job has been submitted this function will return the
+response dictionary.
 """
 function submit(job::BatchJob)
-    job.definition.name = lookupARN(job)
+    job.definition.name = job_definition_arn(job)
 
     if isempty(job.definition.name)
         register!(job)
@@ -358,17 +359,17 @@ function describe(job::BatchJob)
 end
 
 """
-    lookupARN(job::BatchJob) -> String
+    job_definition_arn(job::BatchJob) -> String
 
-Looks up the ARN for the latest job definition that can be reused for the current `BatchJob`.
-A job definition can only be reused if:
+Looks up the ARN (Amazaon Resource Name) for the latest job definition that can be reused
+for the current `BatchJob`. A job definition can only be reused if:
 
 1. status = ACTIVE
 2. type = container
 3. image = job.container.image
 4. jobRoleArn = job.container.role
 """
-function lookupARN(job::BatchJob)
+function job_definition_arn(job::BatchJob)
     resp = describe(job.definition)
 
     isempty(resp["jobDefinitions"]) && return ""
