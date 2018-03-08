@@ -154,7 +154,7 @@ include("mock.jl")
             ),
         )
 
-        submit(job)
+        submit!(job)
         @test isregistered(job) == true
         @test wait(job, [AWSBatch.SUCCEEDED]) == true
         deregister!(job)
@@ -178,7 +178,7 @@ include("mock.jl")
             ),
         )
 
-        submit(job)
+        submit!(job)
         @test isregistered(job) == true
         @test_throws ErrorException wait(job, [AWSBatch.SUCCEEDED]; timeout=0)
         deregister!(job)
@@ -201,7 +201,7 @@ include("mock.jl")
             ),
         )
 
-        submit(job)
+        submit!(job)
         @test isregistered(job) == true
         @test_throws ErrorException wait(job, [AWSBatch.SUCCEEDED])
         deregister!(job)

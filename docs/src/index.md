@@ -37,7 +37,7 @@ julia> job = BatchJob(
        )
 AWSBatch.BatchJob("", "Demo", AWSBatch.BatchJobDefinition("AWSBatchJobDefinition"), "AWSBatchJobQueue", "", AWSBatch.BatchJobContainer("000000000000.dkr.ecr.us-east-1.amazonaws.com/demo:latest", 1, 1024, "arn:aws:iam::000000000000:role/AWSBatchJobRole", `julia -e 'println("Hello World!")'`))
 
-julia> submit(job)
+julia> submit!(job)
 Dict{String,Any} with 2 entries:
   "jobId"   => "00000000-0000-0000-0000-000000000000"
   "jobName" => "Demo"
@@ -64,7 +64,7 @@ AWSBatch.isregistered(::BatchJob)
 AWSBatch.register!(::BatchJob)
 AWSBatch.deregister!(::BatchJob)
 AWSBatch.describe(::BatchJob)
-AWSBatch.submit(::BatchJob)
+AWSBatch.submit!(::BatchJob)
 Base.wait(::BatchJob, ::Vector{BatchStatus}, ::Vector{BatchStatus})
 AWSBatch.logs(::BatchJob)
 ```

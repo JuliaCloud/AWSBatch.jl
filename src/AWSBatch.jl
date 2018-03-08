@@ -24,7 +24,7 @@ export
     isregistered,
     register!,
     deregister!,
-    submit,
+    submit!,
     describe,
     wait,
     logs
@@ -310,14 +310,14 @@ function deregister!(job::BatchJob)
 end
 
 """
-    submit(job::BatchJob) -> Dict
+    submit!(job::BatchJob) -> Dict
 
 Handles submitting the batch job and registering a new job definition if necessary.
 If no valid job definition exists (see `AWSBatch.job_definition_arn`) then a new job
 definition will be created. Once the job has been submitted this function will return the
 response dictionary.
 """
-function submit(job::BatchJob)
+function submit!(job::BatchJob)
     job.definition.name = job_definition_arn(job)
 
     if isempty(job.definition.name)
