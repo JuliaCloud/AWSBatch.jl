@@ -87,6 +87,6 @@ AWSBatch.BatchJobContainer(::Associative)
 ## Private API
 
 ```@docs
-AWSBatch.lookupARN(::BatchJob)
+AWSBatch.job_definition_arn(::BatchJob)
 AWSBatch.update!(::BatchJobContainer, ::Associative)
 ```
