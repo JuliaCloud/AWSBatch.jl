@@ -6,6 +6,7 @@ using AWSSDK.Batch
 using AWSSDK.CloudWatchLogs
 using AWSSDK.S3
 
+using Compat
 using Memento
 using Mocking
 
@@ -15,17 +16,19 @@ import AWSSDK.Batch:
 
 import AWSSDK.CloudWatchLogs: get_log_events
 
+import Compat: Nothing
+
 export
     BatchJob,
     BatchJobDefinition,
     BatchJobContainer,
     BatchStatus,
-    S3Results,
     isregistered,
     register!,
     deregister!,
     submit!,
     describe,
+    status,
     wait,
     logs
 
@@ -42,7 +45,7 @@ __init__() = Memento.register(logger)
 
 @enum BatchStatus SUBMITTED PENDING RUNNABLE STARTING RUNNING SUCCEEDED FAILED UNKNOWN
 const global _status_strs = map(s -> string(s) => s, instances(BatchStatus)) |> Dict
-status(x::String) = _status_strs[x]
+Base.parse(::Type{BatchStatus}, str::AbstractString) = _status_strs[str]
 
 @doc """
     BatchStatus
@@ -68,43 +71,12 @@ Stores configuration information about a batch job's container properties.
 - role::String: IAM role to apply to the ECS task
 - cmd::Cmd: command to execute in the batch job
 """
-mutable struct BatchJobContainer
+struct BatchJobContainer
     image::String
     vcpus::Int
     memory::Int
     role::String
     cmd::Cmd
-end
-
-"""
-    BatchJobContainer(container::T)
-
-Creates a BatchJobContainer from the values passed in the `container` dictionary. Uses
-default values if the field is not specified.
-"""
-function BatchJobContainer(container::Associative)
-    BatchJobContainer(
-        get(container, "image", ""),
-        get(container, "vcpus", 1),
-        get(container, "memory", 1024),
-        get(container, "role", ""),
-        get(container, "cmd", ``),
-    )
-end
-
-"""
-    update!(container::BatchJobContainer, container_details::Associative)
-
-Updates the BatchJobContainer default values with the AWS response dict.
-"""
-function update!(container::BatchJobContainer, details::Associative)
-    # Only update fields that are still using the default values since explict arguments
-    # passed in have priority over aws job definition parameters
-    isempty(container.image) && (container.image = details["image"])
-    container.vcpus == 1 && (container.vcpus = details["vcpus"])
-    container.memory == 1024 && (container.memory = details["memory"])
-    isempty(container.role) && (container.role = details["jobRoleArn"])
-    isempty(container.cmd) && (container.cmd =  Cmd(Vector{String}(details["command"])))
 end
 
 ##################################
@@ -116,7 +88,7 @@ end
 
 Stores the job definition name or arn including the revision.
 """
-mutable struct BatchJobDefinition
+struct BatchJobDefinition
     name::AbstractString
 end
 
@@ -127,9 +99,7 @@ Describes a job given it's definition. Returns the response dictionary.
 Requires permissions to access "batch:DescribeJobDefinitions".
 """
 function describe(definition::BatchJobDefinition)
-    if isempty(definition.name)
-        return Dict("jobDefinitions" => [])
-    elseif startswith(definition.name, "arn:")
+    if startswith(definition.name, "arn:")
         return describe_job_definitions(Dict("jobDefinitions" => [definition.name]))
     else
         return @mock describe_job_definitions(Dict("jobDefinitionName" => definition.name))
@@ -167,7 +137,7 @@ Stores configuration information about a batch job in order to:
 # Fields
 - id::String: jobId
 - name:String: jobName
-- definition::BatchJobDefinition: job definition
+- definition::Union{BatchJobDefinition, Nothing}: job definition
 - queue::String: queue to insert the batch job into
 - region::String: AWS region to use
 - container::BatchJobContainer: job container properties (image, vcpus, memory, role, cmd)
@@ -175,7 +145,7 @@ Stores configuration information about a batch job in order to:
 mutable struct BatchJob
     id::String
     name::String
-    definition::BatchJobDefinition
+    definition::Union{BatchJobDefinition, Nothing}
     queue::String
     region::String
     container::BatchJobContainer
@@ -183,12 +153,16 @@ end
 
 """
     BatchJob(;
-        id="",
-        name="",
-        queue ="",
-        region="",
-        definition=BatchJobDefinition(""),
-        container=BatchJobContainer(Dict())
+        id::String="",
+        name::String="",
+        queue::String="",
+        region::String="",
+        definition::Union{String, Nothing}=nothing,
+        image::String="",
+        vcpus::Integer=1,
+        memory::Integer=1024,
+        role::String="",
+        cmd::Cmd=``,
     )
 
 Handles creating a BatchJob based on various potential defaults.
@@ -202,27 +176,37 @@ Order of priority from lowest to highest:
 3. Explict arguments passed in via `kwargs`.
 """
 function BatchJob(;
-    id="",
-    name="",
-    queue="",
-    region="",
-    definition=BatchJobDefinition(""),
-    container=BatchJobContainer(Dict())
+    id::String="",
+    name::String="",
+    queue::String="",
+    region::String="",
+    definition::Union{String, Nothing}=nothing,
+    image::String="",
+    vcpus::Integer=1,
+    memory::Integer=1024,
+    role::String="",
+    cmd::Cmd=``,
 )
-    if !isa(definition, BatchJobDefinition)
-        definition = BatchJobDefinition(definition)
-    end
 
-    if !isa(container, BatchJobContainer)
-        container = BatchJobContainer(container)
+    if definition !== nothing
+        definition = isempty(definition) ? nothing : BatchJobDefinition(definition)
     end
 
     # Determine if the job definition already exists and update it
-    resp = describe(definition)
-    if !isempty(resp["jobDefinitions"])
-        details = first(resp["jobDefinitions"])
+    if definition !== nothing
+        resp = describe(definition)
+        if !isempty(resp["jobDefinitions"])
+            details = first(resp["jobDefinitions"])
 
-        update!(container, details["containerProperties"])
+            # Only update fields that are using the default values since explict arguments
+            # passed in have priority over aws job definition parameters
+            container = details["containerProperties"]
+            isempty(image) && (image = container["image"])
+            vcpus == 1 && (vcpus = container["vcpus"])
+            memory == 1024 && (memory = container["memory"])
+            isempty(role) && (role = container["jobRoleArn"])
+            isempty(cmd) && (cmd = Cmd(Vector{String}(container["command"])))
+        end
     end
 
     if haskey(ENV, "AWS_BATCH_JOB_ID")
@@ -250,25 +234,36 @@ function BatchJob(;
             isempty(name) && (name = details["jobName"])
             isempty(queue) && (queue = job_queue)
             isempty(region) && (region = job_region)
-            if isempty(definition.name)
+            if definition === nothing
                 definition = BatchJobDefinition(details["jobDefinition"])
             end
 
-            update!(container, details["container"])
+            # Only update fields that are using the default values since explict arguments
+            # passed in have priority over aws job definition parameters
+            container = details["container"]
+            isempty(image) && (image = container["image"])
+            vcpus == 1 && (vcpus = container["vcpus"])
+            memory == 1024 && (memory = container["memory"])
+            isempty(role) && (role = container["jobRoleArn"])
+            isempty(cmd) && (cmd = Cmd(Vector{String}(container["command"])))
         else
             warn(logger, "No jobs found with id: $job_id.")
         end
     end
 
-    return BatchJob(id, name, definition, queue, region, container)
+    job_container = BatchJobContainer(image, vcpus, memory, role, cmd)
+    return BatchJob(id, name, definition, queue, region, job_container)
 end
 
 """
     isregistered(job::BatchJob) -> Bool
 
-Checks if a job is registered.
+Checks if a job is registered. If no job definition exists, a new job definition is created
+under the current job specifications, where the new job definition will be `job.name`.
 """
-isregistered(job::BatchJob) = isregistered(job.definition)
+function isregistered(job::BatchJob)
+    return job.definition !== nothing && isregistered(job.definition)
+end
 
 """
     register!(job::BatchJob)
@@ -277,7 +272,7 @@ Registers a new job definition. If no job definition exists, a new job definitio
 under the current job specifications, where the new job definition will be `job.name`.
 """
 function register!(job::BatchJob)
-    isempty(job.definition.name) && (job.definition.name = job.name)
+    job.definition === nothing && (job.definition = BatchJobDefinition(job.name))
 
     debug(logger, "Registering job definition $(job.definition.name).")
     input = [
@@ -293,17 +288,18 @@ function register!(job::BatchJob)
     ]
 
     resp = register_job_definition(input)
-    job.definition.name = resp["jobDefinitionArn"]
+    job.definition = BatchJobDefinition(resp["jobDefinitionArn"])
     info(logger, "Registered job definition $(job.definition.name).")
 end
 
 """
     deregister!(job::BatchJob)
 
-Deregisters an AWS Batch job.
+Deregisters an AWS Batch job. If no job definition exists, a new job definition is created
+under the current job specifications, where the new job definition will be `job.name`.
 """
 function deregister!(job::BatchJob)
-    isempty(job.definition.name) && (job.definition.name = job.name)
+    job.definition === nothing && (job.definition = BatchJobDefinition(job.name))
     debug(logger, "Deregistering job definition $(job.definition.name).")
     resp = deregister_job_definition(Dict("jobDefinition" => job.definition.name))
     info(logger, "Deregistered job definition $(job.definition.name).")
@@ -318,10 +314,12 @@ definition will be created. Once the job has been submitted this function will r
 response dictionary.
 """
 function submit!(job::BatchJob)
-    job.definition.name = job_definition_arn(job)
+    definition = job_definition_arn(job)
 
-    if isempty(job.definition.name)
+    if definition === nothing
         register!(job)
+    else
+        job.definition = BatchJobDefinition(definition)
     end
 
     debug(logger, "Submitting job $(job.name).")
@@ -351,7 +349,15 @@ If job.id is set then this function is simply responsible for fetch a dictionary
 describing the batch job.
 """
 function describe(job::BatchJob)
-    isempty(job.id) && error(logger, ArgumentError("job.id is not set"))
+    # Make sure the job.id has been set
+    if isempty(job.id)
+        error(
+            logger,
+            ArgumentError("job.id has not been set, call `submit!` to set it first.")
+        )
+    end
+
+    # Get AWS job description
     resp = describe_jobs(; jobs=[job.id])
     isempty(resp["jobs"]) && error(logger, "Job $(job.name)::$(job.id) not found.")
     debug(logger, "Job $(job.name)::$(job.id): $resp")
@@ -359,7 +365,7 @@ function describe(job::BatchJob)
 end
 
 """
-    job_definition_arn(job::BatchJob) -> String
+    job_definition_arn(job::BatchJob) -> Union{String, Nothing}
 
 Looks up the ARN (Amazaon Resource Name) for the latest job definition that can be reused
 for the current `BatchJob`. A job definition can only be reused if:
@@ -369,12 +375,13 @@ for the current `BatchJob`. A job definition can only be reused if:
 3. image = job.container.image
 4. jobRoleArn = job.container.role
 """
-function job_definition_arn(job::BatchJob)
+function job_definition_arn(job::BatchJob)::Union{String, Nothing}
+    job.definition === nothing && return nothing
+
     resp = describe(job.definition)
+    isempty(resp["jobDefinitions"]) && return nothing
 
-    isempty(resp["jobDefinitions"]) && return ""
     latest = first(resp["jobDefinitions"])
-
     for definition in resp["jobDefinitions"]
         if definition["status"] == "ACTIVE" && definition["revision"] > latest["revision"]
             latest = definition
@@ -389,8 +396,17 @@ function job_definition_arn(job::BatchJob)
     )
         return latest["jobDefinitionArn"]
     else
-        return ""
+        return nothing
     end
+end
+
+""" status(job::BatchJob) -> BatchStatus
+
+Returns the current status of a BatchJob.  # TODO: add to autodocs
+"""
+function status(job::BatchJob)::BatchStatus
+    details = describe(job)
+    return parse(BatchStatus, details["status"])
 end
 
 """
@@ -420,10 +436,8 @@ function Base.wait(
 
     tic()
     while time < timeout
-        j = describe(job)
-
         time += toq()
-        state = status(j["status"])
+        state = status(job)
 
         if state != last_state
             info(logger, "$(job.name)::$(job.id) status $state")

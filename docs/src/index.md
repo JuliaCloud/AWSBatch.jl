@@ -27,13 +27,11 @@ julia> job = BatchJob(
            name="Demo",
            definition="AWSBatchJobDefinition",
            queue="AWSBatchJobQueue",
-           container=Dict(
-           	"image" => "000000000000.dkr.ecr.us-east-1.amazonaws.com/demo:latest",
-           	"role" => "arn:aws:iam::000000000000:role/AWSBatchJobRole",
-           	"vcpus" => 1,
-           	"memory" => 1024,
-           	"cmd" => `julia -e 'println("Hello World!")'`,
-           ),
+           image = "000000000000.dkr.ecr.us-east-1.amazonaws.com/demo:latest",
+           role = "arn:aws:iam::000000000000:role/AWSBatchJobRole",
+           vcpus = 1,
+           memory = 1024,
+           cmd = `julia -e 'println("Hello World!")'`,
        )
 AWSBatch.BatchJob("", "Demo", AWSBatch.BatchJobDefinition("AWSBatchJobDefinition"), "AWSBatchJobQueue", "", AWSBatch.BatchJobContainer("000000000000.dkr.ecr.us-east-1.amazonaws.com/demo:latest", 1, 1024, "arn:aws:iam::000000000000:role/AWSBatchJobRole", `julia -e 'println("Hello World!")'`))
 
@@ -65,6 +63,7 @@ AWSBatch.register!(::BatchJob)
 AWSBatch.deregister!(::BatchJob)
 AWSBatch.describe(::BatchJob)
 AWSBatch.submit!(::BatchJob)
+AWSBatch.status(::BatchJob)
 Base.wait(::BatchJob, ::Vector{BatchStatus}, ::Vector{BatchStatus})
 AWSBatch.logs(::BatchJob)
 ```
@@ -81,12 +80,10 @@ AWSBatch.isregistered(::BatchJobDefinition)
 
 ```@docs
 AWSBatch.BatchJobContainer
-AWSBatch.BatchJobContainer(::Associative)
 ```
 
 ## Private API
 
 ```@docs
 AWSBatch.job_definition_arn(::BatchJob)
-AWSBatch.update!(::BatchJobContainer, ::Associative)
 ```
