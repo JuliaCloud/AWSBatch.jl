@@ -2,11 +2,13 @@ using Mocking
 Mocking.enable()
 
 using AWSBatch
-using Base.Test
-using Memento
 using AWSSDK
+using Base.Test
+using Compat
+using Memento
 
 import AWSSDK.Batch: describe_job_definitions
+import Compat: Nothing
 
 const PKG_DIR = abspath(dirname(@__FILE__), "..")
 const REV = cd(() -> readchomp(`git rev-parse HEAD`), PKG_DIR)
@@ -31,13 +33,15 @@ include("mock.jl")
             @test isempty(job.queue)
             @test isempty(job.region)
 
-            @test isempty(job.definition.name)
+            @test job.definition === nothing
 
             @test isempty(job.container.image)
             @test job.container.vcpus == 1
             @test job.container.memory == 1024
             @test isempty(job.container.role)
             @test isempty(job.container.cmd)
+
+            @test_throws ArgumentError status(job)
         end
 
         @testset "From Job Definition" begin
@@ -145,18 +149,17 @@ include("mock.jl")
             name = JOB_NAME,
             definition = JOB_DEFINITION,
             queue = JOB_QUEUE,
-            container = Dict(
-                "image" => IMAGE_DEFINITION,
-                "vcpus" => 1,
-                "memory" => 1024,
-                "role" => JOB_ROLE,
-                "cmd" => `julia -e 'println("Hello World!")'`,
-            ),
+            image = IMAGE_DEFINITION,
+            vcpus = 1,
+            memory = 1024,
+            role = JOB_ROLE,
+            cmd = `julia -e 'println("Hello World!")'`,
         )
 
         submit!(job)
         @test isregistered(job) == true
         @test wait(job, [AWSBatch.SUCCEEDED]) == true
+        @test status(job) == AWSBatch.SUCCEEDED
         deregister!(job)
         events = logs(job)
 
@@ -169,13 +172,11 @@ include("mock.jl")
             name = JOB_NAME,
             definition = JOB_DEFINITION,
             queue = JOB_QUEUE,
-            container = Dict(
-                "image" => IMAGE_DEFINITION,
-                "vcpus" => 1,
-                "memory" => 1024,
-                "role" => JOB_ROLE,
-                "cmd" => `sleep 60`,
-            ),
+            image = IMAGE_DEFINITION,
+            vcpus = 1,
+            memory = 1024,
+            role = JOB_ROLE,
+            cmd = `sleep 60`,
         )
 
         submit!(job)
@@ -192,13 +193,11 @@ include("mock.jl")
             name = JOB_NAME,
             definition = JOB_DEFINITION,
             queue = JOB_QUEUE,
-            container = Dict(
-                "image" => IMAGE_DEFINITION,
-                "vcpus" => 1,
-                "memory" => 1024,
-                "role" => JOB_ROLE,
-                "cmd" => `julia -e 'error("Cmd failed")'`,
-            ),
+            image = IMAGE_DEFINITION,
+            vcpus = 1,
+            memory = 1024,
+            role = JOB_ROLE,
+            cmd = `julia -e 'error("Cmd failed")'`,
         )
 
         submit!(job)
