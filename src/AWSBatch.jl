@@ -30,13 +30,17 @@ export
     describe,
     status,
     wait,
-    logs
+    logs,
+    log_events
 
 
 const logger = getlogger(current_module())
 # Register the module level logger at runtime so that folks can access the logger via `getlogger(MyModule)`
 # NOTE: If this line is not included then the precompiled `MyModule.logger` won't be registered at runtime.
 __init__() = Memento.register(logger)
+
+
+include("log_event.jl")
 
 
 #####################
@@ -466,33 +470,31 @@ function Base.wait(
 end
 
 """
-    logs(job::BatchJob) -> Vector{String}
+    log_events(job::BatchJob) -> Vector{LogEvent}
 
 Fetches the logStreamName, fetches the CloudWatch logs and returns a vector of messages.
 
 NOTES:
-- The `logStreamName`` isn't available until the job is RUNNING, so you may want to use `wait(job)` or
-  `wait(job, [AWSBatch.SUCCEEDED])` prior to calling `logs`.
-- We do not support pagination, so this function is limited to 10,000 log messages by default.
+- The `logStreamName` isn't available until the job is RUNNING, so you may want to use
+  `wait(job)` or `wait(job, [AWSBatch.SUCCEEDED])` prior to calling this function.
+- We do not support pagination, so this function is limited to 10,000 log messages by
+  default.
 """
-function logs(job::BatchJob)
+function log_events(job::BatchJob)
     container_details = describe(job)["container"]
-    events = Vector{String}()
 
     if "logStreamName" in keys(container_details)
         stream = container_details["logStreamName"]
 
         info(logger, "Fetching log events from $stream")
-        events = get_log_events(; logGroupName="/aws/batch/job", logStreamName=stream)["events"]
-
-        for event in events
-            info(logger, event["message"])
-        end
+        output = get_log_events(logGroupName="/aws/batch/job", logStreamName=stream)
+        return convert.(LogEvent, output["events"])
     else
         info(logger, "No log events found for job $(job.name)::$(job.id).")
+        return LogEvent[]
     end
-
-    return events
 end
+
+include("deprecated.jl")
 
 end  # AWSBatch
