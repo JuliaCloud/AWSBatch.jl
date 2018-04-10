@@ -418,13 +418,11 @@ function Base.wait(
     timeout=600,
     delay=5
 )
-    time = 0
     completed = false
     last_state = UNKNOWN
 
-    tic()
-    while time < timeout
-        time += toq()
+    start_time = time()  # System time in seconds since epoch
+    while time() - start_time < timeout
         state = status(job)
 
         if state != last_state
@@ -439,7 +437,6 @@ function Base.wait(
         elseif state in failure
             error(logger, "Job $(job.name)::$(job.id) hit failure condition $state.")
         else
-            tic()
             sleep(delay)
         end
     end
