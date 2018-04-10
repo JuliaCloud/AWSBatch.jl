@@ -399,6 +399,67 @@ end
 
 """
     wait(
+        cond::Function,
+        job::BatchJob;
+        timeout=600,
+        delay=5
+    )
+
+Polls the batch job state until it hits one of the conditions in `cond`.
+The loop will exit if it hits a `failure` condition and will not catch any excpetions.
+The polling interval can be controlled with `delay` and `timeout` provides a maximum
+polling time.
+
+# Examples
+```julia
+julia> wait(state -> state < SUCCEEDED, job)
+true
+```
+"""
+function Base.wait(
+    cond::Function,
+    job::BatchJob;
+    timeout=600,
+    delay=5
+)
+    completed = false
+    last_state = PENDING
+    initial = true
+
+    start_time = time()  # System time in seconds since epoch
+    while time() - start_time < timeout
+        state = status(job)
+
+        if state != last_state || initial
+            info(logger, "$(job.name)::$(job.id) status $state")
+
+            if !cond(state)
+                completed = true
+                break
+            end
+
+            last_state = state
+        end
+
+        initial = false
+        sleep(delay)
+    end
+
+    if !completed
+        message = "Waiting on job $(job.name)::$(job.id) timed out."
+
+        if !initial
+            message *= " Last known state $last_state."
+        end
+
+        error(logger, message)
+    end
+
+    return completed
+end
+
+"""
+    wait(
         job::BatchJob,
         cond::Vector{JobState}=[RUNNING, SUCCEEDED],
         failure::Vector{JobState}=[FAILED];
@@ -415,39 +476,18 @@ function Base.wait(
     job::BatchJob,
     cond::Vector{JobState}=[RUNNING, SUCCEEDED],
     failure::Vector{JobState}=[FAILED];
-    timeout=600,
-    delay=5
+    kwargs...,
 )
-    completed = false
-    last_state = UNKNOWN
-
-    start_time = time()  # System time in seconds since epoch
-    while time() - start_time < timeout
-        state = status(job)
-
-        if state != last_state
-            info(logger, "$(job.name)::$(job.id) status $state")
-        end
-
-        last_state = state
-
+    wait(job; kwargs...) do state
         if state in cond
-            completed = true
-            break
+            false
         elseif state in failure
             error(logger, "Job $(job.name)::$(job.id) hit failure condition $state.")
+            false
         else
-            sleep(delay)
+            true
         end
     end
-
-   if !completed
-        error(
-            logger,
-            "Waiting on job $(job.name)::$(job.id) timed out. Last known state $last_state."
-        )
-    end
-    return completed
 end
 
 """
