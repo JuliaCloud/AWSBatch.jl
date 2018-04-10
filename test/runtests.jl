@@ -24,6 +24,8 @@ setlevel!(getlogger(AWSBatch), "info")
 include("mock.jl")
 
 @testset "AWSBatch.jl" begin
+    include("log_event.jl")
+
     @testset "Job Construction" begin
         @testset "Defaults" begin
             job = BatchJob()
@@ -161,10 +163,10 @@ include("mock.jl")
         @test wait(job, [AWSBatch.SUCCEEDED]) == true
         @test status(job) == AWSBatch.SUCCEEDED
         deregister!(job)
-        events = logs(job)
+        events = log_events(job)
 
         @test length(events) == 1
-        @test contains(first(events)["message"], "Hello World!")
+        @test contains(first(events).message, "Hello World!")
     end
 
     @testset "Job Timed Out" begin
@@ -183,7 +185,7 @@ include("mock.jl")
         @test isregistered(job) == true
         @test_throws ErrorException wait(job, [AWSBatch.SUCCEEDED]; timeout=0)
         deregister!(job)
-        events = logs(job)
+        events = log_events(job)
 
         @test length(events) == 0
     end
@@ -204,9 +206,9 @@ include("mock.jl")
         @test isregistered(job) == true
         @test_throws ErrorException wait(job, [AWSBatch.SUCCEEDED])
         deregister!(job)
-        events = logs(job)
+        events = log_events(job)
 
         @test length(events) == 3
-        @test contains(first(events)["message"], "ERROR: Cmd failed")
+        @test contains(first(events).message, "ERROR: Cmd failed")
     end
 end
