@@ -22,7 +22,7 @@ export
     BatchJob,
     BatchJobDefinition,
     BatchJobContainer,
-    BatchStatus,
+    JobState,
     isregistered,
     register!,
     deregister!,
@@ -41,23 +41,7 @@ __init__() = Memento.register(logger)
 
 
 include("log_event.jl")
-
-
-#####################
-#   BatchStatus
-#####################
-
-@enum BatchStatus SUBMITTED PENDING RUNNABLE STARTING RUNNING SUCCEEDED FAILED UNKNOWN
-const global _status_strs = map(s -> string(s) => s, instances(BatchStatus)) |> Dict
-Base.parse(::Type{BatchStatus}, str::AbstractString) = _status_strs[str]
-
-@doc """
-    BatchStatus
-
-An enum for representing different possible batch job states.
-
-See [docs](http://docs.aws.amazon.com/batch/latest/userguide/job_states.html) for details.
-""" BatchStatus
+include("job_state.jl")
 
 ##################################
 #       BatchJobContainer
@@ -122,7 +106,7 @@ function isregistered(definition::BatchJobDefinition)
 end
 
 ##################################
-#       BatchJob
+#            BatchJob
 ##################################
 
 """
@@ -404,20 +388,20 @@ function job_definition_arn(job::BatchJob)::Union{String, Nothing}
     end
 end
 
-""" status(job::BatchJob) -> BatchStatus
+""" status(job::BatchJob) -> JobState
 
 Returns the current status of a BatchJob.  # TODO: add to autodocs
 """
-function status(job::BatchJob)::BatchStatus
+function status(job::BatchJob)::JobState
     details = describe(job)
-    return parse(BatchStatus, details["status"])
+    return parse(JobState, details["status"])
 end
 
 """
     wait(
         job::BatchJob,
-        cond::Vector{BatchStatus}=[RUNNING, SUCCEEDED],
-        failure::Vector{BatchStatus}=[FAILED];
+        cond::Vector{JobState}=[RUNNING, SUCCEEDED],
+        failure::Vector{JobState}=[FAILED];
         timeout=600,
         delay=5
     )
@@ -429,8 +413,8 @@ polling time.
 """
 function Base.wait(
     job::BatchJob,
-    cond::Vector{BatchStatus}=[RUNNING, SUCCEEDED],
-    failure::Vector{BatchStatus}=[FAILED];
+    cond::Vector{JobState}=[RUNNING, SUCCEEDED],
+    failure::Vector{JobState}=[FAILED];
     timeout=600,
     delay=5
 )
