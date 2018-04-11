@@ -1,7 +1,8 @@
-using AWSBatch: JobState, SUBMITTED, PENDING, RUNNABLE, STARTING, RUNNING, SUCCEEDED, FAILED, UNKNOWN
+using AWSBatch: JobState, SUBMITTED, PENDING, RUNNABLE, STARTING, RUNNING, SUCCEEDED, FAILED
 
 @testset "JobState" begin
     @testset "parse" begin
+        @test length(instances(JobState)) == 7
         @test parse(JobState, "SUBMITTED") == SUBMITTED
         @test parse(JobState, "PENDING") == PENDING
         @test parse(JobState, "RUNNABLE") == RUNNABLE
@@ -9,7 +10,6 @@ using AWSBatch: JobState, SUBMITTED, PENDING, RUNNABLE, STARTING, RUNNING, SUCCE
         @test parse(JobState, "RUNNING") == RUNNING
         @test parse(JobState, "SUCCEEDED") == SUCCEEDED
         @test parse(JobState, "FAILED") == FAILED
-        @test parse(JobState, "UNKNOWN") == UNKNOWN
     end
 
     @testset "order" begin
