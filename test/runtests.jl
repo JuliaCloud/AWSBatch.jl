@@ -25,6 +25,7 @@ include("mock.jl")
 
 @testset "AWSBatch.jl" begin
     include("log_event.jl")
+    include("job_state.jl")
 
     @testset "Job Construction" begin
         @testset "Defaults" begin

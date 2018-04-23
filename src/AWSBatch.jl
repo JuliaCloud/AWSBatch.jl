@@ -22,7 +22,7 @@ export
     BatchJob,
     BatchJobDefinition,
     BatchJobContainer,
-    BatchStatus,
+    JobState,
     isregistered,
     register!,
     deregister!,
@@ -41,23 +41,7 @@ __init__() = Memento.register(logger)
 
 
 include("log_event.jl")
-
-
-#####################
-#   BatchStatus
-#####################
-
-@enum BatchStatus SUBMITTED PENDING RUNNABLE STARTING RUNNING SUCCEEDED FAILED UNKNOWN
-const global _status_strs = map(s -> string(s) => s, instances(BatchStatus)) |> Dict
-Base.parse(::Type{BatchStatus}, str::AbstractString) = _status_strs[str]
-
-@doc """
-    BatchStatus
-
-An enum for representing different possible batch job states.
-
-See [docs](http://docs.aws.amazon.com/batch/latest/userguide/job_states.html) for details.
-""" BatchStatus
+include("job_state.jl")
 
 ##################################
 #       BatchJobContainer
@@ -122,7 +106,7 @@ function isregistered(definition::BatchJobDefinition)
 end
 
 ##################################
-#       BatchJob
+#            BatchJob
 ##################################
 
 """
@@ -404,20 +388,81 @@ function job_definition_arn(job::BatchJob)::Union{String, Nothing}
     end
 end
 
-""" status(job::BatchJob) -> BatchStatus
+""" status(job::BatchJob) -> JobState
 
 Returns the current status of a BatchJob.  # TODO: add to autodocs
 """
-function status(job::BatchJob)::BatchStatus
+function status(job::BatchJob)::JobState
     details = describe(job)
-    return parse(BatchStatus, details["status"])
+    return parse(JobState, details["status"])
+end
+
+"""
+    wait(
+        cond::Function,
+        job::BatchJob;
+        timeout=600,
+        delay=5
+    )
+
+Polls the batch job state until it hits one of the conditions in `cond`.
+The loop will exit if it hits a `failure` condition and will not catch any excpetions.
+The polling interval can be controlled with `delay` and `timeout` provides a maximum
+polling time.
+
+# Examples
+```julia
+julia> wait(state -> state < SUCCEEDED, job)
+true
+```
+"""
+function Base.wait(
+    cond::Function,
+    job::BatchJob;
+    timeout=600,
+    delay=5
+)
+    completed = false
+    last_state = PENDING
+    initial = true
+
+    start_time = time()  # System time in seconds since epoch
+    while time() - start_time < timeout
+        state = status(job)
+
+        if state != last_state || initial
+            info(logger, "$(job.name)::$(job.id) status $state")
+
+            if !cond(state)
+                completed = true
+                break
+            end
+
+            last_state = state
+        end
+
+        initial = false
+        sleep(delay)
+    end
+
+    if !completed
+        message = "Waiting on job $(job.name)::$(job.id) timed out."
+
+        if !initial
+            message *= " Last known state $last_state."
+        end
+
+        error(logger, message)
+    end
+
+    return completed
 end
 
 """
     wait(
         job::BatchJob,
-        cond::Vector{BatchStatus}=[RUNNING, SUCCEEDED],
-        failure::Vector{BatchStatus}=[FAILED];
+        cond::Vector{JobState}=[RUNNING, SUCCEEDED],
+        failure::Vector{JobState}=[FAILED];
         timeout=600,
         delay=5
     )
@@ -429,44 +474,20 @@ polling time.
 """
 function Base.wait(
     job::BatchJob,
-    cond::Vector{BatchStatus}=[RUNNING, SUCCEEDED],
-    failure::Vector{BatchStatus}=[FAILED];
-    timeout=600,
-    delay=5
+    cond::Vector{JobState}=[RUNNING, SUCCEEDED],
+    failure::Vector{JobState}=[FAILED];
+    kwargs...,
 )
-    time = 0
-    completed = false
-    last_state = UNKNOWN
-
-    tic()
-    while time < timeout
-        time += toq()
-        state = status(job)
-
-        if state != last_state
-            info(logger, "$(job.name)::$(job.id) status $state")
-        end
-
-        last_state = state
-
+    wait(job; kwargs...) do state
         if state in cond
-            completed = true
-            break
+            false
         elseif state in failure
             error(logger, "Job $(job.name)::$(job.id) hit failure condition $state.")
+            false
         else
-            tic()
-            sleep(delay)
+            true
         end
     end
-
-   if !completed
-        error(
-            logger,
-            "Waiting on job $(job.name)::$(job.id) timed out. Last known state $last_state."
-        )
-    end
-    return completed
 end
 
 """
