@@ -23,7 +23,7 @@ Please review the
 ```julia
 julia> using AWSBatch
 
-julia> job = BatchJob(
+julia> job = run_batch(
            name="Demo",
            definition="AWSBatchJobDefinition",
            queue="AWSBatchJobQueue",
@@ -33,57 +33,55 @@ julia> job = BatchJob(
            memory = 1024,
            cmd = `julia -e 'println("Hello World!")'`,
        )
-AWSBatch.BatchJob("", "Demo", AWSBatch.BatchJobDefinition("AWSBatchJobDefinition"), "AWSBatchJobQueue", "", AWSBatch.BatchJobContainer("000000000000.dkr.ecr.us-east-1.amazonaws.com/demo:latest", 1, 1024, "arn:aws:iam::000000000000:role/AWSBatchJobRole", `julia -e 'println("Hello World!")'`))
-
-julia> submit!(job)
-Dict{String,Any} with 2 entries:
-  "jobId"   => "00000000-0000-0000-0000-000000000000"
-  "jobName" => "Demo"
+AWSBatch.BatchJob("00000000-0000-0000-0000-000000000000")
 
 julia> wait(job, [AWSBatch.SUCCEEDED])
 true
 
-julia> results = logs(job)
-1-element Array{Any,1}:
- Dict{String,Any}(Pair{String,Any}("ingestionTime", 1505846649863),Pair{String,Any}("message", "Hello World!"),Pair{String,Any}("timestamp", 1505846649786),Pair{String,Any}("eventId", "00000000000000000000000000000000000000000000000000000000"))
+julia> results = log_events(job)
+1-element Array{AWSBatch.LogEvent,1}:
+ AWSBatch.LogEvent("00000000000000000000000000000000000000000000000000000000", 2018-04-23T19:41:18.765, 2018-04-23T19:41:18.677, "Hello World!")
 ```
 
 AWSBatch also supports Memento logging for more detailed usage information.
 
-## Public API
+## API
+
+```@docs
+run_batch()
+```
 
 ### BatchJob
 
 ```@docs
 AWSBatch.BatchJob
-AWSBatch.BatchJob()
-AWSBatch.BatchStatus
-AWSBatch.isregistered(::BatchJob)
-AWSBatch.register!(::BatchJob)
-AWSBatch.deregister!(::BatchJob)
+AWSBatch.submit(::AbstractString, ::JobDefinition, ::AbstractString)
 AWSBatch.describe(::BatchJob)
-AWSBatch.submit!(::BatchJob)
 AWSBatch.status(::BatchJob)
-Base.wait(::BatchJob, ::Vector{BatchStatus}, ::Vector{BatchStatus})
-AWSBatch.logs(::BatchJob)
+Base.wait(::Function, ::BatchJob)
+Base.wait(::BatchJob, ::Vector{JobState}, ::Vector{JobState})
+AWSBatch.log_events(::BatchJob)
 ```
 
-### BatchJobDefinition
+### JobDefinition
 
 ```@docs
-AWSBatch.BatchJobDefinition
-AWSBatch.describe(::BatchJobDefinition)
-AWSBatch.isregistered(::BatchJobDefinition)
+AWSBatch.JobDefinition
+AWSBatch.register(::AbstractString)  # Does this display kwargs correctly
+AWSBatch.job_definition_arn(::JobDefinition)
+AWSBatch.deregister(::JobDefinition)
+AWSBatch.isregistered(::JobDefinition)
+AWSBatch.describe(::JobDefinition)
 ```
 
-### BatchJobContainer
+### JobState
 
 ```@docs
-AWSBatch.BatchJobContainer
+AWSBatch.JobState
 ```
 
-## Private API
+### LogEvent
 
 ```@docs
-AWSBatch.job_definition_arn(::BatchJob)
+AWSBatch.LogEvent
 ```

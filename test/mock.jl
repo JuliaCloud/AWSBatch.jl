@@ -83,20 +83,3 @@ const DESCRIBE_JOBS_RESP = Dict(
         )
     ]
 )
-
-
-"""
-    Mock.readstring(cmd::CmdRedirect, pass::Bool=true)
-
-Mocks the CmdRedirect produced from ``pipeline(`curl http://169.254.169.254/latest/meta-data/placement/availability-zone`)``
-to just return "us-east-1".
-"""
-function mock_readstring(cmd::CmdRedirect)
-    cmd_exec = cmd.cmd.exec
-
-    result = if cmd_exec[1] == "curl" && contains(cmd_exec[2], "availability-zone")
-        return "us-east-1"
-    else
-        return Base.readstring(cmd)
-    end
-end

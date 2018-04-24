@@ -1,6 +1,6 @@
 # https://docs.aws.amazon.com/batch/latest/userguide/job_states.html
 @doc """
-    BatchStatus
+    JobState
 
 An enum for representing different possible AWS Batch job states.
 
