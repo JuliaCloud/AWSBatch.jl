@@ -57,6 +57,7 @@ run_batch()
 AWSBatch.BatchJob
 AWSBatch.submit(::AbstractString, ::JobDefinition, ::AbstractString)
 AWSBatch.describe(::BatchJob)
+AWSBatch.JobDefinition(::BatchJob)
 AWSBatch.status(::BatchJob)
 Base.wait(::Function, ::BatchJob)
 Base.wait(::BatchJob, ::Vector{JobState}, ::Vector{JobState})
@@ -67,7 +68,7 @@ AWSBatch.log_events(::BatchJob)
 
 ```@docs
 AWSBatch.JobDefinition
-AWSBatch.register(::AbstractString)  # Does this display kwargs correctly
+AWSBatch.register(::AbstractString)
 AWSBatch.job_definition_arn(::JobDefinition)
 AWSBatch.deregister(::JobDefinition)
 AWSBatch.isregistered(::JobDefinition)

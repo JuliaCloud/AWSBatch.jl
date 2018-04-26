@@ -1,7 +1,8 @@
 __precompile__()
 module AWSBatch
 
-using AWSSDK
+using AWSCore: AWSConfig, AWSCredentials
+
 using AWSSDK.Batch
 using AWSSDK.CloudWatchLogs
 using AWSSDK.S3
@@ -10,6 +11,7 @@ using Compat
 using Memento
 using Mocking
 
+import Base: showerror
 import Compat: Nothing
 
 export
@@ -36,6 +38,16 @@ include("log_event.jl")
 include("job_state.jl")
 include("job_definition.jl")
 include("batch_job.jl")
+
+
+struct BatchEnvironmentError <: Exception
+    message::String
+end
+
+function showerror(io::IO, e::BatchEnvironmentError)
+    print(io, "BatchEnvironmentError: ")
+    print(io, e.message)
+end
 
 
 """
@@ -91,7 +103,7 @@ function run_batch(;
 
             # Update container override parameters
             vcpus == 1 && (vcpus = container["vcpus"])
-            memory == 1024 && (memory = container["memory"])
+            (memory == 1024  || memory < 1) && (memory = container["memory"])
             isempty(cmd) && (cmd = Cmd(Vector{String}(container["command"])))
         end
     end
@@ -102,6 +114,15 @@ function run_batch(;
         # inspecting the running AWS Batch job in the ECS task interface.
         job_id = ENV["AWS_BATCH_JOB_ID"]
         job_queue = ENV["AWS_BATCH_JQ_NAME"]
+
+        # Get the zone information from the EC2 instance metadata.
+        zone = @mock readstring(
+            pipeline(
+                `curl http://169.254.169.254/latest/meta-data/placement/availability-zone`;
+                stderr=DevNull
+            )
+        )
+        isempty(region) && (region = chop(zone))
 
         # Requires permissions to access to "batch:DescribeJobs"
         response = @mock describe_jobs(Dict("jobs" => [job_id]))
@@ -123,40 +144,53 @@ function run_batch(;
 
             # Update container overrides
             vcpus == 1 && (vcpus = container["vcpus"])
-            memory == 1024 && (memory = container["memory"])
+            (memory == 1024  || memory < 1) && (memory = container["memory"])
             isempty(cmd) && (cmd = Cmd(Vector{String}(container["command"])))
         else
             warn(logger, "No jobs found with id: $job_id.")
         end
     end
 
+    # Error if required parameters were not explicitly set and cannot be inferred
+    if isempty(name) || isempty(queue) || memory < 1
+        throw(BatchEnvironmentError(
+            "Unable to perform AWS Batch introspection when not running within " *
+            "an AWS Batch job. Current job parameters are: " *
+            "name: $name\n" *
+            "queue: $queue\n" *
+            "memory: $memory\n"
+        ))
+    end
+
     # Reuse a previously registered job definition if available.
     # If no job definition exists that can be reused, a new job definition is created
     # under the current job specifications.
     if definition !== nothing
-        reusable_def = @mock job_definition_arn(definition; image=image, role=role)
+        reusable_def = job_definition_arn(definition; image=image, role=role)
 
         if reusable_def !== nothing
             definition = reusable_def
         else
-            definition = @mock register(
+            definition = register(
                 definition.name;
                 image=image,
                 role=role,
                 vcpus=vcpus,
                 memory=memory,
                 cmd=cmd,
+                region=region,
             )
         end
     else
         # Use the job name as the definiton name since the definition name was not specified
-        definition = @mock register(
+        definition = register(
             name;
             image=image,
             role=role,
             vcpus=vcpus,
             memory=memory,
             cmd=cmd,
+            region=region,
         )
     end
 
@@ -168,7 +202,13 @@ function run_batch(;
         "cmd" => cmd,
     )
 
-    return @mock submit(name, definition, queue; container=container_overrides)
+    return submit(
+        name,
+        definition,
+        queue;
+        container=container_overrides,
+        region=region,
+    )
 end
 
 include("deprecated.jl")

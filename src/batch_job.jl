@@ -21,11 +21,12 @@ end
 
 """
     submit(
-    name::AbstractString,
-    definition::JobDefinition,
-    queue::AbstractString;
-    container::AbstractDict=Dict()
-) -> BatchJob
+        name::AbstractString,
+        definition::JobDefinition,
+        queue::AbstractString;
+        container::AbstractDict=Dict(),
+        region::AbstractString="",
+    ) -> BatchJob
 
 Handles submitting the batch job. Returns a `BatchJob` wrapper for the id.
 """
@@ -33,8 +34,12 @@ function submit(
     name::AbstractString,
     definition::JobDefinition,
     queue::AbstractString;
-    container::AbstractDict=Dict()
+    container::AbstractDict=Dict(),
+    region::AbstractString="",
 )
+    region = isempty(region) ? "us-east-1" : region
+    config = AWSConfig(:creds => AWSCredentials(), :region => region)
+
     debug(logger, "Submitting job $name.")
     input = [
         "jobName" => name,
@@ -44,7 +49,7 @@ function submit(
     ]
     debug(logger, "Input: $input")
 
-    response = submit_job(input)
+    response = @mock submit_job(config, input)
     job = BatchJob(response["jobId"])
 
     info(logger, "Submitted job $(name)::$(job.id).")
@@ -55,8 +60,7 @@ end
 """
     describe(job::BatchJob) -> Dict
 
-If job.id is set then this function is simply responsible for fetch a dictionary for
-describing the batch job.
+Provides details about the AWS batch job.
 """
 function describe(job::BatchJob)
     response = @mock describe_jobs(; jobs=[job.id])
@@ -65,8 +69,15 @@ function describe(job::BatchJob)
     return first(response["jobs"])
 end
 
+"""
+    JobDefinition
 
-""" status(job::BatchJob) -> JobState
+Returns the job definition corresponding to a batch job.
+"""
+JobDefinition(job::BatchJob) = JobDefinition(describe(job)["jobDefinition"])
+
+"""
+    status(job::BatchJob) -> JobState
 
 Returns the current status of a job.
 """

@@ -5,6 +5,17 @@ const BATCH_ENVS = (
     "AWS_BATCH_JQ_NAME" => "HighPriority"
 )
 
+const SUBMIT_JOB_RESP = Dict(
+    "jobName" => "example",
+    "jobId" => "24fa2d7a-64c4-49d2-8b47-f8da4fbde8e9",
+)
+
+const REGISTER_JOB_DEF_RESP = Dict(
+    "jobDefinitionName" => "sleep60",
+    "jobDefinitionArn" => "arn:aws:batch:us-east-1:012345678910:job-definition/sleep60:1",
+    "revision"=>1,
+)
+
 const DESCRIBE_JOBS_DEF_RESP = Dict(
     "jobDefinitions" => [
         Dict(
@@ -83,3 +94,20 @@ const DESCRIBE_JOBS_RESP = Dict(
         )
     ]
 )
+
+
+"""
+    Mock.readstring(cmd::CmdRedirect, pass::Bool=true)
+
+Mocks the CmdRedirect produced from ``pipeline(`curl http://169.254.169.254/latest/meta-data/placement/availability-zone`)``
+to just return "us-east-1".
+"""
+function mock_readstring(cmd::CmdRedirect)
+    cmd_exec = cmd.cmd.exec
+
+    result = if cmd_exec[1] == "curl" && contains(cmd_exec[2], "availability-zone")
+        return "us-east-1"
+    else
+        return Base.readstring(cmd)
+    end
+end

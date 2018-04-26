@@ -2,6 +2,8 @@ using Mocking
 Mocking.enable()
 
 using AWSBatch
+using AWSCore: AWSConfig
+
 using Base.Test
 using Memento
 
@@ -17,24 +19,18 @@ setlevel!(getlogger(AWSBatch), "info")
 include("mock.jl")
 
 
-function verify_job_submission(name, definition, queue, container, expected)
-    @test name == expected["name"]
-    @test definition.name == expected["definition"]
-    @test queue == expected["queue"]
-    @test container == expected["container"]
-
-    return BatchJob(expected["id"])
+function register_job_def(config::AWSConfig, input::AbstractArray, expected::AbstractArray)
+    @test input == expected
+    return REGISTER_JOB_DEF_RESP
 end
 
-function verify_job_definition(definition, image, role, vcpus, memory, cmd, expected)
-    @test definition == expected["definition"]
-    @test image == expected["image"]
-    @test role == expected["role"]
-    @test vcpus == expected["vcpus"]
-    @test memory == expected["memory"]
-    @test cmd == expected["cmd"]
+function submit_job(config::AWSConfig, input::AbstractArray, expected::AbstractArray)
+    @test input == expected
 
-    return JobDefinition(definition)
+    cmd = Dict(input)["containerOverrides"]["cmd"]
+    @spawn run(cmd)
+
+    return SUBMIT_JOB_RESP
 end
 
 
@@ -43,168 +39,71 @@ end
     include("job_state.jl")
 
     @testset "`run_batch` preprocessing" begin
+
         @testset "Defaults" begin
-            expected_job_parameters = Dict(
-                "name" => "",
-                "definition" => "",
-                "queue" => "",
-                "container" => Dict("cmd" => ``, "memory" => 1024, "vcpus" => 1),
-                "id" => "",
-            )
-
-            expected_job_definition = Dict(
-                "definition" => "",
-                "image" => "",
-                "role" => "",
-                "vcpus" => 1,
-                "memory" => 1024,
-                "cmd" => ``,
-            )
-
-            patches = [
-                @patch register(
-                    definition;
-                    image="",
-                    role="",
-                    vcpus="",
-                    memory=1024,
-                    cmd=""
-                ) = verify_job_definition(
-                    definition,
-                    image,
-                    role,
-                    vcpus,
-                    memory,
-                    cmd,
-                    expected_job_definition
-                )
-                @patch submit(
-                    name,
-                    definition,
-                    queue;
-                    container=Dict()
-                ) = verify_job_submission(
-                    name,
-                    definition,
-                    queue,
-                    container,
-                    expected_job_parameters
-                )
-            ]
-
-            apply(patches) do
-                job = run_batch()
-                @test job.id == ""
+            withenv("AWS_BATCH_JOB_ID" => nothing) do
+                @test_throws AWSBatch.BatchEnvironmentError run_batch()
             end
         end
 
         @testset "From Job Definition" begin
-            expected_job_parameters = Dict(
-                "name" => "AWSBatchTest",
-                "definition" => "sleep60",
-                "queue" => "",
-                "container" => Dict("cmd" => `sleep 60`, "memory" => 128, "vcpus" => 1),
-                "id" => "24fa2d7a-64c4-49d2-8b47-f8da4fbde8e9",
-            )
-
-            expected_job_definition = Dict(
-                "definition" => "sleep60",
-                "image" => "busybox",
-                "role" => "arn:aws:iam::012345678910:role/sleep60",
-                "vcpus" => 1,
-                "memory" => 128,
-                "cmd" => `sleep 60`,
-            )
+            expected_job = [
+                    "jobName" => "example",
+                    "jobDefinition" => "arn:aws:batch:us-east-1:012345678910:job-definition/sleep60:1",
+                    "jobQueue" => "HighPriority",
+                    "containerOverrides" => Dict(
+                        "cmd" => `sleep 60`,
+                        "memory" => 128,
+                        "vcpus" => 1,
+                    ),
+                ]
 
             patches = [
                 @patch describe_job_definitions(args...) = DESCRIBE_JOBS_DEF_RESP
-                @patch job_definition_arn(definition; image="", role="") = nothing
-                @patch register(
-                    definition;
-                    image="",
-                    role="",
-                    vcpus="",
-                    memory=1024,
-                    cmd=""
-                ) = verify_job_definition(
-                    definition,
-                    image,
-                    role,
-                    vcpus,
-                    memory,
-                    cmd,
-                    expected_job_definition
-                )
-                @patch submit(
-                    name,
-                    definition,
-                    queue;
-                    container=Dict()
-                ) = verify_job_submission(
-                    name,
-                    definition,
-                    queue,
-                    container,
-                    expected_job_parameters
-                )
+                @patch submit_job(config, input) = submit_job(config, input, expected_job)
             ]
 
             apply(patches) do
-                job = run_batch(; name=JOB_NAME, definition="sleep60")
+                job = run_batch(; name="example", definition="sleep60", queue="HighPriority")
                 @test job.id == "24fa2d7a-64c4-49d2-8b47-f8da4fbde8e9"
             end
         end
 
         @testset "From Current Job" begin
             withenv(BATCH_ENVS...) do
-                expected_job_parameters = Dict(
-                    "name" => "example",
-                    "definition" => "sleep60",
-                    "queue" => "HighPriority",
-                    "container" => Dict("cmd" => `sleep 60`, "memory" => 128, "vcpus" => 1),
-                    "id" => "24fa2d7a-64c4-49d2-8b47-f8da4fbde8e9",
-                )
+                expected_job = [
+                    "jobName" => "example",
+                    "jobDefinition" => "arn:aws:batch:us-east-1:012345678910:job-definition/sleep60:1",
+                    "jobQueue" => "HighPriority",
+                    "containerOverrides" => Dict(
+                        "cmd" => `sleep 60`,
+                        "memory" => 128,
+                        "vcpus" => 1,
+                    ),
+                ]
 
-                expected_job_definition = Dict(
-                    "definition" => "sleep60",
-                    "image" => "busybox",
-                    "role" => "arn:aws:iam::012345678910:role/sleep60",
-                    "vcpus" => 1,
-                    "memory" => 128,
-                    "cmd" => `sleep 60`,
-                )
+                expected_job_def = [
+                    "type" => "container",
+                    "containerProperties" => [
+                        "image" => "busybox",
+                        "vcpus" => 1,
+                        "memory" => 128,
+                        "command" => ["sleep", "60"],
+                        "jobRoleArn" => "arn:aws:iam::012345678910:role/sleep60",
+                    ],
+                    "jobDefinitionName" => "sleep60",
+                ]
 
                 patches = [
+                    @patch readstring(cmd::AbstractCmd) = mock_readstring(cmd)
                     @patch describe_jobs(args...) = DESCRIBE_JOBS_RESP
-                    @patch job_definition_arn(definition; image="", role="") = nothing
-                    @patch register(
-                        definition;
-                        image="",
-                        role="",
-                        vcpus="",
-                        memory=1024,
-                        cmd=""
-                    ) = verify_job_definition(
-                        definition,
-                        image,
-                        role,
-                        vcpus,
-                        memory,
-                        cmd,
-                        expected_job_definition
+                    @patch describe_job_definitions(args...) = Dict("jobDefinitions" => Dict())
+                    @patch register_job_definition(config, input) = register_job_def(
+                        config,
+                        input,
+                        expected_job_def,
                     )
-                    @patch submit(
-                        name,
-                        definition,
-                        queue;
-                        container=Dict()
-                    ) = verify_job_submission(
-                        name,
-                        definition,
-                        queue,
-                        container,
-                        expected_job_parameters
-                    )
+                    @patch submit_job(config, input) = submit_job(config, input, expected_job)
                 ]
 
                 apply(patches) do

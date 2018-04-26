@@ -17,7 +17,8 @@ end
         image::AbstractString="",
         vcpus::Integer=1,
         memory::Integer=1024,
-        cmd::Cmd=``
+        cmd::Cmd=``,
+        region::AbstractString="",
     ) -> JobDefinition
 
 Registers a new job definition.
@@ -28,8 +29,12 @@ function register(
     role::AbstractString="",
     vcpus::Integer=1,
     memory::Integer=1024,
-    cmd::Cmd=``
+    cmd::Cmd=``,
+    region::AbstractString="",
 )
+    region = isempty(region) ? "us-east-1" : region
+    config = AWSConfig(:creds => AWSCredentials(), :region => region)
+
     debug(logger, "Registering job definition $definition.")
     input = [
         "type" => "container",
@@ -43,7 +48,7 @@ function register(
         "jobDefinitionName" => definition,
     ]
 
-    response = register_job_definition(input)
+    response = @mock register_job_definition(config, input)
     definition = JobDefinition(response["jobDefinitionArn"])
     info(logger, "Registered job definition $(definition.name).")
     return definition
