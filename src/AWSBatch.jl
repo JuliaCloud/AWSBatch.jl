@@ -194,12 +194,12 @@ function run_batch(;
         )
     end
 
-    # The parameters that can be overridden are `memory`, `vcpus`, `cmd`, and `environment`
+    # Parameters that can be overridden are `memory`, `vcpus`, `command`, and `environment`
     # See https://docs.aws.amazon.com/batch/latest/APIReference/API_ContainerOverrides.html
     container_overrides = Dict(
         "vcpus" => vcpus,
         "memory" => memory,
-        "cmd" => cmd,
+        "command" => cmd.exec,
     )
 
     return submit(

@@ -8,10 +8,6 @@ end
 
 function submit_job(config::AWSConfig, input::AbstractArray, expected::AbstractArray)
     @test input == expected
-
-    cmd = Dict(input)["containerOverrides"]["cmd"]
-    @spawn run(cmd)
-
     return SUBMIT_JOB_RESP
 end
 
@@ -30,7 +26,7 @@ end
                 "jobDefinition" => "arn:aws:batch:us-east-1:012345678910:job-definition/sleep60:1",
                 "jobQueue" => "HighPriority",
                 "containerOverrides" => Dict(
-                    "cmd" => `sleep 60`,
+                    "command" => ["sleep", "60"],
                     "memory" => 128,
                     "vcpus" => 1,
                 ),
@@ -54,7 +50,7 @@ end
                 "jobDefinition" => "arn:aws:batch:us-east-1:012345678910:job-definition/sleep60:1",
                 "jobQueue" => "HighPriority",
                 "containerOverrides" => Dict(
-                    "cmd" => `sleep 60`,
+                    "command" => ["sleep", "60"],
                     "memory" => 128,
                     "vcpus" => 1,
                 ),
