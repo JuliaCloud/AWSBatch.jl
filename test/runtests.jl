@@ -1,5 +1,5 @@
 using Mocking
-Mocking.enable()
+Mocking.enable(force=true)
 
 using AWSBatch
 using AWSCore: AWSConfig
