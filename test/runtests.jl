@@ -86,6 +86,8 @@ setlevel!(getlogger(AWSBatch), "info")
             end
 
             @testset "Job Timed Out" begin
+                info("Testing job timeout")
+
                 job = run_batch(;
                     name = STACK["JobName"],
                     definition = STACK["JobDefinitionName"],
@@ -100,7 +102,6 @@ setlevel!(getlogger(AWSBatch), "info")
                 job_definition = JobDefinition(describe(job)["jobDefinition"])
                 @test isregistered(job_definition) == true
 
-                info("Testing job timeout")
                 @test_throws ErrorException wait(job, [AWSBatch.SUCCEEDED]; timeout=0)
 
                 deregister(job_definition)
@@ -110,6 +111,8 @@ setlevel!(getlogger(AWSBatch), "info")
             end
 
             @testset "Failed Job" begin
+                info("Testing job failure")
+
                 job = run_batch(;
                     name = STACK["JobName"],
                     definition = STACK["JobDefinitionName"],
@@ -124,7 +127,6 @@ setlevel!(getlogger(AWSBatch), "info")
                 job_definition = JobDefinition(describe(job)["jobDefinition"])
                 @test isregistered(job_definition) == true
 
-                info("Testing job failure")
                 @test_throws ErrorException wait(job, [AWSBatch.SUCCEEDED])
 
                 deregister(job_definition)

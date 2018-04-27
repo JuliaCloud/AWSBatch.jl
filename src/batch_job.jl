@@ -40,7 +40,7 @@ function submit(
     region = isempty(region) ? "us-east-1" : region
     config = AWSConfig(:creds => AWSCredentials(), :region => region)
 
-    debug(logger, "Submitting job $name.")
+    debug(logger, "Submitting job $name")
     input = [
         "jobName" => name,
         "jobDefinition" => definition.name,

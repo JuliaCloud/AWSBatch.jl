@@ -55,7 +55,7 @@ end
         name::AbstractString="",
         queue::AbstractString="",
         region::AbstractString="",
-        definition::Union{AbstractString, Nothing}=nothing,
+        definition::Union{AbstractString, JobDefinition, Nothing}=nothing,
         image::AbstractString="",
         vcpus::Integer=1,
         memory::Integer=1024,
@@ -80,14 +80,14 @@ function run_batch(;
     name::AbstractString="",
     queue::AbstractString="",
     region::AbstractString="",
-    definition::Union{AbstractString, Nothing}=nothing,
+    definition::Union{AbstractString, JobDefinition, Nothing}=nothing,
     image::AbstractString="",
     vcpus::Integer=1,
     memory::Integer=1024,
     role::AbstractString="",
     cmd::Cmd=``,
 )
-    if definition !== nothing
+    if isa(definition, AbstractString)
         definition = isempty(definition) ? nothing : JobDefinition(definition)
     end
 
