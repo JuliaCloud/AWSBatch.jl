@@ -58,7 +58,7 @@ setlevel!(getlogger(AWSBatch), "info")
                 @test job_details["jobQueue"] == STACK["JobQueueArn"]
 
                 # Test job definition and container parameters were set correctly
-                job_definition = JobDefinition(job_details["jobDefinition"])
+                job_definition = JobDefinition(job)
                 @test isregistered(job_definition) == true
 
                 job_definition_details = first(describe(job_definition)["jobDefinitions"])
@@ -99,7 +99,7 @@ setlevel!(getlogger(AWSBatch), "info")
                     cmd = `sleep 60`,
                 )
 
-                job_definition = JobDefinition(describe(job)["jobDefinition"])
+                job_definition = JobDefinition(job)
                 @test isregistered(job_definition) == true
 
                 @test_throws ErrorException wait(job, [AWSBatch.SUCCEEDED]; timeout=0)
@@ -124,7 +124,7 @@ setlevel!(getlogger(AWSBatch), "info")
                     cmd = `julia -e 'error("Cmd failed")'`,
                 )
 
-                job_definition = JobDefinition(describe(job)["jobDefinition"])
+                job_definition = JobDefinition(job)
                 @test isregistered(job_definition) == true
 
                 @test_throws ErrorException wait(job, [AWSBatch.SUCCEEDED])
