@@ -81,8 +81,36 @@ end
             ]
 
             apply(patches) do
-                 job = run_batch()
-                 @test job.id == "24fa2d7a-64c4-49d2-8b47-f8da4fbde8e9"
+                job = run_batch()
+                @test job.id == "24fa2d7a-64c4-49d2-8b47-f8da4fbde8e9"
+            end
+        end
+    end
+
+    @testset "Using a Job Definition" begin
+        withenv(BATCH_ENVS...) do
+            expected_job = [
+                "jobName" => "example",
+                "jobDefinition" => "arn:aws:batch:us-east-1:012345678910:job-definition/sleep60:1",
+                "jobQueue" => "HighPriority",
+                "containerOverrides" => Dict(
+                    "command" => ["sleep", "60"],
+                    "memory" => 128,
+                    "vcpus" => 1,
+                ),
+            ]
+
+            patches = [
+                @patch readstring(cmd::AbstractCmd) = mock_readstring(cmd)
+                @patch describe_jobs(args...) = DESCRIBE_JOBS_RESP
+                @patch describe_job_definitions(args...) = Dict("jobDefinitions" => Dict())
+                @patch submit_job(config, input) = submit_job(config, input, expected_job)
+            ]
+
+            apply(patches) do
+                definition = JobDefinition("arn:aws:batch:us-east-1:012345678910:job-definition/sleep60:1")
+                job = run_batch(definition=definition)
+                @test job.id == "24fa2d7a-64c4-49d2-8b47-f8da4fbde8e9"
             end
         end
     end

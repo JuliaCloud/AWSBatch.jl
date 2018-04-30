@@ -7,12 +7,13 @@ using AWSSDK.Batch
 using AWSSDK.CloudWatchLogs
 using AWSSDK.S3
 
-using Compat
 using Memento
 using Mocking
 
+using Compat: Nothing
+using Compat: AbstractDict
+
 import Base: showerror
-import Compat: Nothing
 
 export
     BatchJob,
@@ -88,7 +89,7 @@ function run_batch(;
     cmd::Cmd=``,
 )
     if isa(definition, AbstractString)
-        definition = isempty(definition) ? nothing : JobDefinition(definition)
+        definition = isempty(definition) ? nothing : definition
     end
 
     # Determine if the job definition already exists and update the default job parameters
@@ -134,7 +135,7 @@ function run_batch(;
 
             # Update the job's required parameters
             isempty(name) && (name = details["jobName"])
-            definition === nothing && (definition = JobDefinition(details["jobDefinition"]))
+            definition === nothing && (definition = details["jobDefinition"])
             isempty(queue) && (queue = job_queue)
 
             # Update the container parameters
@@ -165,14 +166,14 @@ function run_batch(;
     # Reuse a previously registered job definition if available.
     # If no job definition exists that can be reused, a new job definition is created
     # under the current job specifications.
-    if definition !== nothing
-        reusable_def = job_definition_arn(definition; image=image, role=role)
+    if isa(definition, AbstractString)
+        reusable_job_definition_arn = job_definition_arn(definition; image=image, role=role)
 
-        if reusable_def !== nothing
-            definition = reusable_def
+        if reusable_job_definition_arn !== nothing
+            definition = JobDefinition(reusable_job_definition_arn)
         else
             definition = register(
-                definition.name;
+                definition;
                 image=image,
                 role=role,
                 vcpus=vcpus,
@@ -181,7 +182,7 @@ function run_batch(;
                 region=region,
             )
         end
-    else
+    elseif definition === nothing
         # Use the job name as the definiton name since the definition name was not specified
         definition = register(
             name;

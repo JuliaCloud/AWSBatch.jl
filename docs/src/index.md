@@ -68,11 +68,11 @@ AWSBatch.log_events(::BatchJob)
 
 ```@docs
 AWSBatch.JobDefinition
+AWSBatch.job_definition_arn(::AbstractString)
 AWSBatch.register(::AbstractString)
-AWSBatch.job_definition_arn(::JobDefinition)
 AWSBatch.deregister(::JobDefinition)
 AWSBatch.isregistered(::JobDefinition)
-AWSBatch.describe(::JobDefinition)
+AWSBatch.describe(::Union{AbstractString, JobDefinition})
 ```
 
 ### JobState

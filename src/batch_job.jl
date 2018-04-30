@@ -43,7 +43,7 @@ function submit(
     debug(logger, "Submitting job $name")
     input = [
         "jobName" => name,
-        "jobDefinition" => definition.name,
+        "jobDefinition" => definition.arn,
         "jobQueue" => queue,
         "containerOverrides" => container,
     ]

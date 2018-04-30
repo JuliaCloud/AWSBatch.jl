@@ -11,7 +11,7 @@ using Base: @deprecate
 @deprecate register!(job::BatchJob) error("`register`!(job::BatchJob)` is no longer supported. Look at `register` to register job definitions")
 @deprecate deregister!(job::BatchJob) error("`deregister`!(job::BatchJob)` is no longer supported. Look at `deregister` to de-register job definitions")
 
-@deprecate register(job_definition::JobDefinition) register(job_definition.name)
+@deprecate register(job_definition::JobDefinition) register(job_definition.arn)
 
 function BatchJob(; id="", kwargs...)
     if !isempty(id) && isempty(kwargs)

@@ -1,5 +1,3 @@
-using Compat: AbstractDict
-
 """
     LogEvent
 
