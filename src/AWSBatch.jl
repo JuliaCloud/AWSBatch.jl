@@ -94,7 +94,7 @@ function run_batch(;
 
     # Determine if the job definition already exists and update the default job parameters
     if definition !== nothing
-        response = describe(definition)
+        response = describe_job_definition(definition)
         if !isempty(response["jobDefinitions"])
             details = first(response["jobDefinitions"])
 

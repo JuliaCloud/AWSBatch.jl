@@ -42,7 +42,7 @@ function job_definition_arn(
     image::AbstractString="",
     role::AbstractString=""
 )
-    response = describe(definition_name)
+    response = describe_job_definition(definition_name)
     isempty(response["jobDefinitions"]) && return nothing
 
     latest = first(response["jobDefinitions"])
@@ -125,24 +125,23 @@ Checks if a JobDefinition is registered.
 """
 function isregistered(definition::JobDefinition)
     j = describe(definition)
-    active_definitions = filter!(d -> d["status"] == "ACTIVE", get(j, "jobDefinitions", []))
-    return !isempty(active_definitions)
+    return any(d -> d["status"] == "ACTIVE", get(j, "jobDefinitions", []))
 end
 
 """
-    describe(definition::Union{AbstractString, JobDefinition}) -> Dict
+    describe(definition::JobDefinition) -> Dict
 
-Describes a job given it's definition name or arn. Returns the response dictionary.
-Requires permissions to access "batch:DescribeJobDefinitions".
+Describes a job definition as a dictionary. Requires the IAM permissions
+"batch:DescribeJobDefinitions".
 """
-function describe(definition::Union{AbstractString, JobDefinition})
-    if isa(definition, AbstractString)
-        if startswith(definition, "arn:")
-            return @mock describe_job_definitions(Dict("jobDefinitions" => [definition]))
-        else
-            return @mock describe_job_definitions(Dict("jobDefinitionName" => definition))
-        end
+describe(definition::JobDefinition) = describe_job_definition(definition)
+
+describe_job_definition(definition::JobDefinition) = describe_job_definition(definition.arn)
+function describe_job_definition(definition::AbstractString)
+    query = if startswith(definition, "arn:")
+        Dict("jobDefinitions" => [definition])
     else
-        return @mock describe_job_definitions(Dict("jobDefinitions" => [definition.arn]))
+        Dict("jobDefinitionName" => definition)
     end
+    return @mock describe_job_definitions(query)
 end
