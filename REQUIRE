@@ -1,4 +1,5 @@
 julia 0.6
+AWSCore 0.3.0
 AWSSDK 0.2.0
 Compat 0.41.0
 Mocking 0.3.3

@@ -1,215 +1,142 @@
 using Mocking
-Mocking.enable()
+Mocking.enable(force=true)
 
 using AWSBatch
-using AWSSDK
+using AWSCore: AWSConfig
+using AWSTools.CloudFormation: stack_output
+
 using Base.Test
-using Compat
 using Memento
 
-import AWSSDK.Batch: describe_job_definitions
-import Compat: Nothing
 
-const PKG_DIR = abspath(dirname(@__FILE__), "..")
-const REV = cd(() -> readchomp(`git rev-parse HEAD`), PKG_DIR)
-const IMAGE_DEFINITION = "292522074875.dkr.ecr.us-east-1.amazonaws.com/aws-tools:latest"
-const JOB_ROLE = "arn:aws:iam::292522074875:role/AWSBatchClusterManagerJobRole"
-const JOB_DEFINITION = "AWSBatch"
-const JOB_NAME = "AWSBatchTest"
-const JOB_QUEUE = "Replatforming-Manager"
+# Enables the running of the "batch" online tests. e.g ONLINE=batch
+const ONLINE = strip.(split(get(ENV, "ONLINE", ""), r"\s*,\s*"))
+
+# Partially emulates the output from the AWS batch manager test stack
+const LEGACY_STACK = Dict(
+    "JobQueueArn" => "arn:aws:batch:us-east-1:292522074875:job-queue/Replatforming-Manager",
+    "JobName" => "AWSBatchTest",
+    "JobDefinitionName" => "AWSBatch",
+    "JobRoleArn" => "arn:aws:iam::292522074875:role/AWSBatchClusterManagerJobRole",
+    "EcrUri" => "292522074875.dkr.ecr.us-east-1.amazonaws.com/aws-tools:latest",
+)
+
+const AWS_STACKNAME = get(ENV, "AWS_STACKNAME", "")
+const STACK = isempty(AWS_STACKNAME) ? LEGACY_STACK : stack_output(AWS_STACKNAME)
 
 Memento.config("debug"; fmt="[{level} | {name}]: {msg}")
 setlevel!(getlogger(AWSBatch), "info")
 
-include("mock.jl")
 
 @testset "AWSBatch.jl" begin
     include("log_event.jl")
     include("job_state.jl")
+    include("run_batch.jl")
 
-    @testset "Job Construction" begin
-        @testset "Defaults" begin
-            job = BatchJob()
+    if "batch" in ONLINE
+        @testset "Online" begin
+            info("Running ONLINE tests")
 
-            @test isempty(job.id)
-            @test isempty(job.name)
-            @test isempty(job.queue)
-            @test isempty(job.region)
+            @testset "Job Submission" begin
+                job = run_batch(;
+                    name = STACK["JobName"],
+                    definition = STACK["JobDefinitionName"],
+                    queue = STACK["JobQueueArn"],
+                    image = STACK["EcrUri"],
+                    vcpus = 1,
+                    memory = 1024,
+                    role = STACK["JobRoleArn"],
+                    cmd = `julia -e 'println("Hello World!")'`,
+                )
 
-            @test job.definition === nothing
+                @test wait(job, [AWSBatch.SUCCEEDED]) == true
+                @test status(job) == AWSBatch.SUCCEEDED
 
-            @test isempty(job.container.image)
-            @test job.container.vcpus == 1
-            @test job.container.memory == 1024
-            @test isempty(job.container.role)
-            @test isempty(job.container.cmd)
+                # Test job details were set correctly
+                job_details = describe(job)
+                @test job_details["jobName"] == STACK["JobName"]
+                @test job_details["jobQueue"] == STACK["JobQueueArn"]
 
-            @test_throws ArgumentError status(job)
-        end
+                # Test job definition and container parameters were set correctly
+                job_definition = JobDefinition(job)
+                @test isregistered(job_definition) == true
 
-        @testset "From Job Definition" begin
-            patch = @patch describe_job_definitions(args...) = DESCRIBE_JOBS_DEF_RESP
+                job_definition_details = first(describe(job_definition)["jobDefinitions"])
 
-            apply(patch; debug=true) do
-                job = BatchJob(name=JOB_NAME, definition="sleep60")
+                @test job_definition_details["jobDefinitionName"] == STACK["JobDefinitionName"]
+                @test job_definition_details["status"] == "ACTIVE"
+                @test job_definition_details["type"] == "container"
 
-                @test isempty(job.id)
-                @test job.name == "AWSBatchTest"
-                @test isempty(job.queue)
-                @test isempty(job.region)
-
-                @test job.definition.name == "sleep60"
-
-                @test job.container.image == "busybox"
-                @test job.container.vcpus == 1
-                @test job.container.memory == 128
-                @test job.container.role == "arn:aws:iam::012345678910:role/sleep60"
-                @test job.container.cmd == `sleep 60`
-            end
-        end
-
-        @testset "From Current Job" begin
-            withenv(BATCH_ENVS...) do
-                patches = [
-                    @patch readstring(cmd::AbstractCmd) = mock_readstring(cmd)
-                    @patch describe_jobs(args...) = DESCRIBE_JOBS_RESP
+                container_properties = job_definition_details["containerProperties"]
+                @test container_properties["image"] == STACK["EcrUri"]
+                @test container_properties["vcpus"] == 1
+                @test container_properties["memory"] == 1024
+                @test container_properties["command"] == [
+                    "julia",
+                    "-e",
+                    "println(\"Hello World!\")"
                 ]
+                @test container_properties["jobRoleArn"] == STACK["JobRoleArn"]
 
-                apply(patches; debug=true) do
-                    job = BatchJob()
+                deregister(job_definition)
 
-                    @test job.id == "24fa2d7a-64c4-49d2-8b47-f8da4fbde8e9"
-                    @test job.name == "example"
-                    @test job.queue == "HighPriority"
-                    @test job.region == "us-east-"
+                events = log_events(job)
+                @test length(events) == 1
+                @test contains(first(events).message, "Hello World!")
+            end
 
-                    @test job.definition.name == "sleep60"
+            @testset "Job Timed Out" begin
+                info("Testing job timeout")
 
+                job = run_batch(;
+                    name = STACK["JobName"],
+                    definition = STACK["JobDefinitionName"],
+                    queue = STACK["JobQueueArn"],
+                    image = STACK["EcrUri"],
+                    vcpus = 1,
+                    memory = 1024,
+                    role = STACK["JobRoleArn"],
+                    cmd = `sleep 60`,
+                )
 
-                    @test job.container.image == "busybox"
-                    @test job.container.vcpus == 1
-                    @test job.container.memory == 128
-                    @test job.container.role == "arn:aws:iam::012345678910:role/sleep60"
-                    @test job.container.cmd == `sleep 60`
-                end
+                job_definition = JobDefinition(job)
+                @test isregistered(job_definition) == true
+
+                @test_throws ErrorException wait(job, [AWSBatch.SUCCEEDED]; timeout=0)
+
+                deregister(job_definition)
+
+                events = log_events(job)
+                @test length(events) == 0
+            end
+
+            @testset "Failed Job" begin
+                info("Testing job failure")
+
+                job = run_batch(;
+                    name = STACK["JobName"],
+                    definition = STACK["JobDefinitionName"],
+                    queue = STACK["JobQueueArn"],
+                    image = STACK["EcrUri"],
+                    vcpus = 1,
+                    memory = 1024,
+                    role = STACK["JobRoleArn"],
+                    cmd = `julia -e 'error("Cmd failed")'`,
+                )
+
+                job_definition = JobDefinition(job)
+                @test isregistered(job_definition) == true
+
+                @test_throws ErrorException wait(job, [AWSBatch.SUCCEEDED])
+
+                deregister(job_definition)
+
+                events = log_events(job)
+                @test length(events) == 3
+                @test contains(first(events).message, "ERROR: Cmd failed")
             end
         end
-
-        @testset "From Multiple" begin
-            withenv(BATCH_ENVS...) do
-                patches = [
-                    @patch readstring(cmd::AbstractCmd) = mock_readstring(cmd)
-                    @patch describe_jobs(args...) = DESCRIBE_JOBS_RESP
-                ]
-
-                apply(patches; debug=true) do
-                    job = BatchJob()
-
-                    @test job.id == "24fa2d7a-64c4-49d2-8b47-f8da4fbde8e9"
-                    @test job.name == "example"
-                    @test job.definition.name == "sleep60"
-                    @test job.queue == "HighPriority"
-                    @test job.region == "us-east-"
-
-                    @test job.container.image == "busybox"
-                    @test job.container.vcpus == 1
-                    @test job.container.memory == 128
-                    @test job.container.role == "arn:aws:iam::012345678910:role/sleep60"
-                    @test job.container.cmd == `sleep 60`
-                end
-            end
-        end
-
-        @testset "Reuse job definition" begin
-            withenv(BATCH_ENVS...) do
-                patches = [
-                    @patch readstring(cmd::AbstractCmd) = mock_readstring(cmd)
-                    @patch describe_jobs(args...) = DESCRIBE_JOBS_RESP
-                ]
-
-                apply(patches; debug=true) do
-                    job = BatchJob()
-
-                    @test job.id == "24fa2d7a-64c4-49d2-8b47-f8da4fbde8e9"
-                    @test job.name == "example"
-                    @test job.definition.name == "sleep60"
-                    @test job.queue == "HighPriority"
-                    @test job.region == "us-east-"
-
-                    @test job.container.image == "busybox"
-                    @test job.container.vcpus == 1
-                    @test job.container.memory == 128
-                    @test job.container.role == "arn:aws:iam::012345678910:role/sleep60"
-                    @test job.container.cmd == `sleep 60`
-                end
-            end
-        end
-
-    end
-
-    @testset "Job Submission" begin
-        job = BatchJob(;
-            name = JOB_NAME,
-            definition = JOB_DEFINITION,
-            queue = JOB_QUEUE,
-            image = IMAGE_DEFINITION,
-            vcpus = 1,
-            memory = 1024,
-            role = JOB_ROLE,
-            cmd = `julia -e 'println("Hello World!")'`,
-        )
-
-        submit!(job)
-        @test isregistered(job) == true
-        @test wait(job, [AWSBatch.SUCCEEDED]) == true
-        @test status(job) == AWSBatch.SUCCEEDED
-        deregister!(job)
-        events = log_events(job)
-
-        @test length(events) == 1
-        @test contains(first(events).message, "Hello World!")
-    end
-
-    @testset "Job Timed Out" begin
-        job = BatchJob(;
-            name = JOB_NAME,
-            definition = JOB_DEFINITION,
-            queue = JOB_QUEUE,
-            image = IMAGE_DEFINITION,
-            vcpus = 1,
-            memory = 1024,
-            role = JOB_ROLE,
-            cmd = `sleep 60`,
-        )
-
-        submit!(job)
-        @test isregistered(job) == true
-        @test_throws ErrorException wait(job, [AWSBatch.SUCCEEDED]; timeout=0)
-        deregister!(job)
-        events = log_events(job)
-
-        @test length(events) == 0
-    end
-
-    @testset "Failed Job" begin
-        job = BatchJob(;
-            name = JOB_NAME,
-            definition = JOB_DEFINITION,
-            queue = JOB_QUEUE,
-            image = IMAGE_DEFINITION,
-            vcpus = 1,
-            memory = 1024,
-            role = JOB_ROLE,
-            cmd = `julia -e 'error("Cmd failed")'`,
-        )
-
-        submit!(job)
-        @test isregistered(job) == true
-        @test_throws ErrorException wait(job, [AWSBatch.SUCCEEDED])
-        deregister!(job)
-        events = log_events(job)
-
-        @test length(events) == 3
-        @test contains(first(events).message, "ERROR: Cmd failed")
+    else
+        warn("Skipping ONLINE tests")
     end
 end
