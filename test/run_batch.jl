@@ -1,6 +1,3 @@
-include("mock.jl")
-
-
 function register_job_def(config::AWSConfig, input::AbstractArray, expected::AbstractArray)
     @test input == expected
     return REGISTER_JOB_DEF_RESP

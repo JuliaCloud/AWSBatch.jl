@@ -1,4 +1,5 @@
 import Base: AbstractCmd, CmdRedirect
+using DataStructures: OrderedDict
 
 const BATCH_ENVS = (
     "AWS_BATCH_JOB_ID" => "24fa2d7a-64c4-49d2-8b47-f8da4fbde8e9",
@@ -110,4 +111,37 @@ function mock_readstring(cmd::CmdRedirect)
     else
         return Base.readstring(cmd)
     end
+end
+
+
+function describe_compute_environments_patch(output::Vector=[])
+    @patch function describe_compute_environments(d::Dict)
+        compute_envs = d["computeEnvironments"]
+        @assert length(compute_envs) == 1
+        ce = first(compute_envs)
+
+        key = startswith(ce, "arn:") ? "computeEnvironmentArn" : "computeEnvironmentName"
+        results = filter(d -> d[key] == ce, output)
+        OrderedDict("computeEnvironments" => results)
+    end
+end
+
+function describe_compute_environments_patch(output::OrderedDict)
+    describe_compute_environments_patch([output])
+end
+
+function describe_job_queues_patch(output::Vector=[])
+    @patch function describe_job_queues(d::Dict)
+        queues = d["jobQueues"]
+        @assert length(queues) == 1
+        queue = first(queues)
+
+        key = startswith(queue, "arn:") ? "jobQueueArn" : "jobQueueName"
+        results = filter(d -> d[key] == queue, output)
+        OrderedDict("jobQueues" => output)
+    end
+end
+
+function describe_job_queues_patch(output::OrderedDict)
+    describe_job_queues_patch([output])
 end
