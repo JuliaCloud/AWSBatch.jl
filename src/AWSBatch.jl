@@ -62,6 +62,7 @@ end
         memory::Integer=1024,
         role::AbstractString="",
         cmd::Cmd=``,
+        num_jobs::Integer=1,
     ) -> BatchJob
 
 Handles submitting a BatchJob based on various potential defaults.
@@ -87,6 +88,7 @@ function run_batch(;
     memory::Integer=1024,
     role::AbstractString="",
     cmd::Cmd=``,
+    num_jobs::Integer=1,
 )
     if isa(definition, AbstractString)
         definition = isempty(definition) ? nothing : definition
@@ -209,6 +211,7 @@ function run_batch(;
         queue;
         container=container_overrides,
         region=region,
+        num_jobs=num_jobs,
     )
 end
 
