@@ -27,8 +27,12 @@ const STACK = isempty(AWS_STACKNAME) ? LEGACY_STACK : stack_output(AWS_STACKNAME
 Memento.config("debug"; fmt="[{level} | {name}]: {msg}")
 setlevel!(getlogger(AWSBatch), "info")
 
+include("mock.jl")
+
 
 @testset "AWSBatch.jl" begin
+    include("compute_environment.jl")
+    include("job_queue.jl")
     include("log_event.jl")
     include("job_state.jl")
     include("run_batch.jl")

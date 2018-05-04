@@ -12,11 +12,14 @@ using Mocking
 
 using Compat: Nothing
 using Compat: AbstractDict
+using DataStructures: OrderedDict
 
 import Base: showerror
 
 export
     BatchJob,
+    ComputeEnvironment,
+    JobQueue,
     JobDefinition,
     JobState,
     run_batch,
@@ -36,6 +39,8 @@ __init__() = Memento.register(logger)
 
 
 include("log_event.jl")
+include("compute_environment.jl")
+include("job_queue.jl")
 include("job_state.jl")
 include("job_definition.jl")
 include("batch_job.jl")
