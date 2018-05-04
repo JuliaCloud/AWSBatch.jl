@@ -26,6 +26,7 @@ end
         queue::AbstractString;
         container::AbstractDict=Dict(),
         region::AbstractString="",
+        num_jobs::Integer=1,
     ) -> BatchJob
 
 Handles submitting the batch job. Returns a `BatchJob` wrapper for the id.
@@ -36,23 +37,35 @@ function submit(
     queue::AbstractString;
     container::AbstractDict=Dict(),
     region::AbstractString="",
+    num_jobs::Integer=1,
 )
     region = isempty(region) ? "us-east-1" : region
     config = AWSConfig(:creds => AWSCredentials(), :region => region)
 
-    debug(logger, "Submitting job $name")
+    debug(logger, "Submitting job \"$name\"")
     input = [
         "jobName" => name,
         "jobDefinition" => definition.arn,
         "jobQueue" => queue,
         "containerOverrides" => container,
     ]
+
+    if num_jobs > 1
+        # https://docs.aws.amazon.com/batch/latest/userguide/array_jobs.html
+        @assert 2 <= num_jobs <= 10_000
+        push!(input, "arrayProperties" => ["size" => num_jobs])
+    end
+
     debug(logger, "Input: $input")
 
     response = @mock submit_job(config, input)
     job = BatchJob(response["jobId"])
 
-    info(logger, "Submitted job $(name)::$(job.id).")
+    if num_jobs > 1
+        info(logger, "Submitted array job \"$(name)\" ($(job.id), n=$(num_jobs))")
+    else
+        info(logger, "Submitted job \"$(name)\" ($(job.id))")
+    end
 
     return job
 end
@@ -135,10 +148,10 @@ function Base.wait(
     end
 
     if !completed
-        message = "Waiting on job $(job.id) timed out."
+        message = "Waiting on job $(job.id) timed out"
 
         if !initial
-            message *= " Last known state $last_state."
+            message *= " Last known state $last_state"
         end
 
         error(logger, message)
@@ -170,7 +183,7 @@ function Base.wait(
         if state in cond
             false
         elseif state in failure
-            error(logger, "Job $(job.id) hit failure condition $state.")
+            error(logger, "Job $(job.id) hit failure condition $state")
             false
         else
             true
@@ -190,16 +203,16 @@ NOTES:
   default.
 """
 function log_events(job::BatchJob)
-    container_details = describe(job)["container"]
+    job_details = describe(job)
 
-    if "logStreamName" in keys(container_details)
-        stream = container_details["logStreamName"]
+    if "logStreamName" in keys(job_details["container"])
+        stream = job_details["container"]["logStreamName"]
 
         info(logger, "Fetching log events from $stream")
         output = get_log_events(logGroupName="/aws/batch/job", logStreamName=stream)
         return convert.(LogEvent, output["events"])
     else
-        info(logger, "No log events found for job $(job.id).")
+        info(logger, "No log events found for job $(job.id)")
         return LogEvent[]
     end
 end

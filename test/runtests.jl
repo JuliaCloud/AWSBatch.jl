@@ -52,6 +52,10 @@ setlevel!(getlogger(AWSBatch), "info")
                 @test wait(job, [AWSBatch.SUCCEEDED]) == true
                 @test status(job) == AWSBatch.SUCCEEDED
 
+                events = log_events(job)
+                @test length(events) == 1
+                @test first(events).message == "Hello World!"
+
                 # Test job details were set correctly
                 job_details = describe(job)
                 @test job_details["jobName"] == STACK["JobName"]
@@ -79,17 +83,56 @@ setlevel!(getlogger(AWSBatch), "info")
                 @test container_properties["jobRoleArn"] == STACK["JobRoleArn"]
 
                 deregister(job_definition)
+            end
 
+            @testset "Array job" begin
+                job = run_batch(;
+                    name = "AWSBatchArrayJobTest",
+                    definition = STACK["JobDefinitionName"],
+                    queue = STACK["JobQueueArn"],
+                    image = STACK["EcrUri"],
+                    vcpus = 1,
+                    memory = 1024,
+                    role = STACK["JobRoleArn"],
+                    cmd = `julia -e 'println("Hello World!")'`,
+                    num_jobs = 3,
+                )
+
+                @test wait(job, [AWSBatch.SUCCEEDED]) == true
+                @test status(job) == AWSBatch.SUCCEEDED
+
+                # Test array job was submitted properly
+                status_summary = Dict(
+                    "STARTING" => 0, "FAILED" => 0, "RUNNING" => 0, "SUCCEEDED" => 3,
+                    "RUNNABLE" => 0, "SUBMITTED" => 0, "PENDING" => 0,
+                )
+                job_details = describe(job)
+                @test job_details["arrayProperties"]["statusSummary"] == status_summary
+                @test job_details["arrayProperties"]["size"] == 3
+
+                # Test no log events for the job submitted
                 events = log_events(job)
-                @test length(events) == 1
-                @test contains(first(events).message, "Hello World!")
+                @test length(events) == 0
+
+                # Test logs for each individual job that is part of the job array
+                for i in 0:2
+                    job_id = "$(job.id):$i"
+                    events = log_events(BatchJob(job_id))
+
+                    @test length(events) == 1
+                    @test first(events).message == "Hello World!"
+                end
+
+                # Deregister the job definition
+                job_definition = JobDefinition(job)
+                deregister(job_definition)
             end
 
             @testset "Job Timed Out" begin
                 info("Testing job timeout")
 
                 job = run_batch(;
-                    name = STACK["JobName"],
+                    name = "AWSBatchTimeOutJobTest",
                     definition = STACK["JobDefinitionName"],
                     queue = STACK["JobQueueArn"],
                     image = STACK["EcrUri"],
@@ -114,14 +157,14 @@ setlevel!(getlogger(AWSBatch), "info")
                 info("Testing job failure")
 
                 job = run_batch(;
-                    name = STACK["JobName"],
+                    name = "AWSBatchFailedJobTest",
                     definition = STACK["JobDefinitionName"],
                     queue = STACK["JobQueueArn"],
                     image = STACK["EcrUri"],
                     vcpus = 1,
                     memory = 1024,
                     role = STACK["JobRoleArn"],
-                    cmd = `julia -e 'error("Cmd failed")'`,
+                    cmd = `julia -e 'error("Testing job failure")'`,
                 )
 
                 job_definition = JobDefinition(job)
@@ -133,7 +176,7 @@ setlevel!(getlogger(AWSBatch), "info")
 
                 events = log_events(job)
                 @test length(events) == 3
-                @test contains(first(events).message, "ERROR: Cmd failed")
+                @test first(events).message == "ERROR: Testing job failure"
             end
         end
     else

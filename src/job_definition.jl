@@ -88,7 +88,7 @@ function register(
     region = isempty(region) ? "us-east-1" : region
     config = AWSConfig(:creds => AWSCredentials(), :region => region)
 
-    debug(logger, "Registering job definition $definition_name.")
+    debug(logger, "Registering job definition \"$definition_name\"")
     input = [
         "type" => "container",
         "containerProperties" => [
@@ -103,7 +103,7 @@ function register(
 
     response = @mock register_job_definition(config, input)
     definition = JobDefinition(response["jobDefinitionArn"])
-    info(logger, "Registered job definition $(definition.arn).")
+    info(logger, "Registered job definition \"$(definition.arn)\"")
     return definition
 end
 
@@ -113,9 +113,9 @@ end
 Deregisters an AWS Batch job.
 """
 function deregister(definition::JobDefinition)
-    debug(logger, "Deregistering job definition $(definition.arn).")
+    debug(logger, "Deregistering job definition \"$(definition.arn)\"")
     resp = deregister_job_definition(Dict("jobDefinition" => definition.arn))
-    info(logger, "Deregistered job definition $(definition.arn).")
+    info(logger, "Deregistered job definition \"$(definition.arn)\"")
 end
 
 """
