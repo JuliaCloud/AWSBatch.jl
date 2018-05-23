@@ -52,6 +52,7 @@ include("mock.jl")
                     memory = 1024,
                     role = STACK["JobRoleArn"],
                     cmd = `julia -e 'println("Hello World!")'`,
+                    parameters = Dict{String, String}("region" => "us-east-1"),
                 )
 
                 @test wait(job, [AWSBatch.SUCCEEDED]) == true
@@ -65,6 +66,7 @@ include("mock.jl")
                 job_details = describe(job)
                 @test job_details["jobName"] == "aws-batch-test"
                 @test job_details["jobQueue"] == STACK["ManagerJobQueueArn"]
+                @test job_details["parameters"] == Dict("region" => "us-east-1")
 
                 # Test job definition and container parameters were set correctly
                 job_definition = JobDefinition(job)
