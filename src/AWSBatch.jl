@@ -67,7 +67,7 @@ end
         role::AbstractString="",
         cmd::Cmd=``,
         num_jobs::Integer=1,
-        parameters::Dict{String, String} = Dict{String, String}(),
+        parameters::Dict{String, String}=Dict{String, String}(),
     ) -> BatchJob
 
 Handles submitting a BatchJob based on various potential defaults.
@@ -94,7 +94,7 @@ function run_batch(;
     role::AbstractString="",
     cmd::Cmd=``,
     num_jobs::Integer=1,
-    parameters::Dict{String, String} = Dict{String, String}(),
+    parameters::Dict{String, String}=Dict{String, String}(),
 )
     if isa(definition, AbstractString)
         definition = isempty(definition) ? nothing : definition

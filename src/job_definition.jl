@@ -72,7 +72,7 @@ end
         memory::Integer=1024,
         cmd::Cmd=``,
         region::AbstractString="",
-        parameters::Dict{String,String} = Dict{String, String}(),
+        parameters::Dict{String,String}=Dict{String, String}(),
     ) -> JobDefinition
 
 Registers a new job definition.
@@ -85,7 +85,7 @@ function register(
     memory::Integer=1024,
     cmd::Cmd=``,
     region::AbstractString="",
-    parameters::Dict{String, String} = Dict{String, String}(),
+    parameters::Dict{String, String}=Dict{String, String}(),
 )
     region = isempty(region) ? "us-east-1" : region
     config = AWSConfig(:creds => AWSCredentials(), :region => region)

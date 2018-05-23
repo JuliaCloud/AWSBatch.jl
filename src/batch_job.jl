@@ -25,7 +25,7 @@ end
         definition::JobDefinition,
         queue::AbstractString;
         container::AbstractDict=Dict(),
-        parameters::Dict{String,String} = Dict{String, String}(),
+        parameters::Dict{String,String}=Dict{String, String}(),
         region::AbstractString="",
         num_jobs::Integer=1,
     ) -> BatchJob
@@ -37,7 +37,7 @@ function submit(
     definition::JobDefinition,
     queue::AbstractString;
     container::AbstractDict=Dict(),
-    parameters::Dict{String,String} = Dict{String, String}(),
+    parameters::Dict{String,String}=Dict{String, String}(),
     region::AbstractString="",
     num_jobs::Integer=1,
 )
