@@ -5,7 +5,6 @@ using AWSCore: AWSConfig, AWSCredentials
 
 using AWSSDK.Batch
 using AWSSDK.CloudWatchLogs
-using AWSSDK.S3
 
 using Memento
 using Mocking
