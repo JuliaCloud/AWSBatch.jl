@@ -14,15 +14,16 @@ const ONLINE = strip.(split(get(ENV, "ONLINE", ""), r"\s*,\s*"))
 
 # Partially emulates the output from the AWS batch manager test stack
 const LEGACY_STACK = Dict(
-    "JobQueueArn" => "arn:aws:batch:us-east-1:292522074875:job-queue/Replatforming-Manager",
-    "JobName" => "AWSBatchTest",
-    "JobDefinitionName" => "AWSBatch",
+    "ManagerJobQueueArn" => "arn:aws:batch:us-east-1:292522074875:job-queue/Replatforming-Manager",
+    "JobName" => "aws-batch-test",
+    "JobDefinitionName" => "aws-batch-test",
     "JobRoleArn" => "arn:aws:iam::292522074875:role/AWSBatchClusterManagerJobRole",
-    "EcrUri" => "292522074875.dkr.ecr.us-east-1.amazonaws.com/aws-tools:latest",
+    "EcrUri" => "292522074875.dkr.ecr.us-east-1.amazonaws.com/aws-cluster-managers-test:latest",
 )
 
 const AWS_STACKNAME = get(ENV, "AWS_STACKNAME", "")
 const STACK = isempty(AWS_STACKNAME) ? LEGACY_STACK : stack_output(AWS_STACKNAME)
+const JULIA_BAKED_IMAGE = "292522074875.dkr.ecr.us-east-1.amazonaws.com/julia-baked:0.6"
 
 Memento.config("debug"; fmt="[{level} | {name}]: {msg}")
 setlevel!(getlogger(AWSBatch), "info")
@@ -43,10 +44,10 @@ include("mock.jl")
 
             @testset "Job Submission" begin
                 job = run_batch(;
-                    name = STACK["JobName"],
-                    definition = STACK["JobDefinitionName"],
-                    queue = STACK["JobQueueArn"],
-                    image = STACK["EcrUri"],
+                    name = "aws-batch-test",
+                    definition = "aws-batch-test",
+                    queue = STACK["ManagerJobQueueArn"],
+                    image = JULIA_BAKED_IMAGE,
                     vcpus = 1,
                     memory = 1024,
                     role = STACK["JobRoleArn"],
@@ -62,8 +63,8 @@ include("mock.jl")
 
                 # Test job details were set correctly
                 job_details = describe(job)
-                @test job_details["jobName"] == STACK["JobName"]
-                @test job_details["jobQueue"] == STACK["JobQueueArn"]
+                @test job_details["jobName"] == "aws-batch-test"
+                @test job_details["jobQueue"] == STACK["ManagerJobQueueArn"]
 
                 # Test job definition and container parameters were set correctly
                 job_definition = JobDefinition(job)
@@ -71,12 +72,12 @@ include("mock.jl")
 
                 job_definition_details = first(describe(job_definition)["jobDefinitions"])
 
-                @test job_definition_details["jobDefinitionName"] == STACK["JobDefinitionName"]
+                @test job_definition_details["jobDefinitionName"] == "aws-batch-test"
                 @test job_definition_details["status"] == "ACTIVE"
                 @test job_definition_details["type"] == "container"
 
                 container_properties = job_definition_details["containerProperties"]
-                @test container_properties["image"] == STACK["EcrUri"]
+                @test container_properties["image"] == JULIA_BAKED_IMAGE
                 @test container_properties["vcpus"] == 1
                 @test container_properties["memory"] == 1024
                 @test container_properties["command"] == [
@@ -91,10 +92,10 @@ include("mock.jl")
 
             @testset "Array job" begin
                 job = run_batch(;
-                    name = "AWSBatchArrayJobTest",
-                    definition = STACK["JobDefinitionName"],
-                    queue = STACK["JobQueueArn"],
-                    image = STACK["EcrUri"],
+                    name = "aws-batch-array-job-test",
+                    definition = "aws-batch-test",
+                    queue = STACK["ManagerJobQueueArn"],
+                    image = JULIA_BAKED_IMAGE,
                     vcpus = 1,
                     memory = 1024,
                     role = STACK["JobRoleArn"],
@@ -136,10 +137,10 @@ include("mock.jl")
                 info("Testing job timeout")
 
                 job = run_batch(;
-                    name = "AWSBatchTimeOutJobTest",
-                    definition = STACK["JobDefinitionName"],
-                    queue = STACK["JobQueueArn"],
-                    image = STACK["EcrUri"],
+                    name = "aws-bath-timeout-job-test",
+                    definition = "aws-batch-test",
+                    queue = STACK["ManagerJobQueueArn"],
+                    image = JULIA_BAKED_IMAGE,
                     vcpus = 1,
                     memory = 1024,
                     role = STACK["JobRoleArn"],
@@ -161,10 +162,10 @@ include("mock.jl")
                 info("Testing job failure")
 
                 job = run_batch(;
-                    name = "AWSBatchFailedJobTest",
-                    definition = STACK["JobDefinitionName"],
-                    queue = STACK["JobQueueArn"],
-                    image = STACK["EcrUri"],
+                    name = "aws-batch-failed-job-test",
+                    definition = "aws-batch-test",
+                    queue = STACK["ManagerJobQueueArn"],
+                    image = JULIA_BAKED_IMAGE,
                     vcpus = 1,
                     memory = 1024,
                     role = STACK["JobRoleArn"],
@@ -179,7 +180,6 @@ include("mock.jl")
                 deregister(job_definition)
 
                 events = log_events(job)
-                @test length(events) == 3
                 @test first(events).message == "ERROR: Testing job failure"
             end
         end
