@@ -20,8 +20,9 @@ end
     @testset "From Job Definition" begin
         expected_job = [
                 "jobName" => "example",
-                "jobDefinition" => "arn:aws:batch:us-east-1:012345678910:job-definition/sleep60:1",
                 "jobQueue" => "HighPriority",
+                "jobDefinition" => "arn:aws:batch:us-east-1:012345678910:job-definition/sleep60:1",
+                "parameters" => Dict{String,String}(),
                 "containerOverrides" => Dict(
                     "command" => ["sleep", "60"],
                     "memory" => 128,
@@ -44,8 +45,9 @@ end
         withenv(BATCH_ENVS...) do
             expected_job = [
                 "jobName" => "example",
-                "jobDefinition" => "arn:aws:batch:us-east-1:012345678910:job-definition/sleep60:1",
                 "jobQueue" => "HighPriority",
+                "jobDefinition" => "arn:aws:batch:us-east-1:012345678910:job-definition/sleep60:1",
+                "parameters" => Dict{String,String}(),
                 "containerOverrides" => Dict(
                     "command" => ["sleep", "60"],
                     "memory" => 128,
@@ -55,6 +57,7 @@ end
 
             expected_job_def = [
                 "type" => "container",
+                "parameters" => Dict{String,String}(),
                 "containerProperties" => [
                     "image" => "busybox",
                     "vcpus" => 1,
@@ -88,8 +91,9 @@ end
         withenv(BATCH_ENVS...) do
             expected_job = [
                 "jobName" => "example",
-                "jobDefinition" => "arn:aws:batch:us-east-1:012345678910:job-definition/sleep60:1",
                 "jobQueue" => "HighPriority",
+                "jobDefinition" => "arn:aws:batch:us-east-1:012345678910:job-definition/sleep60:1",
+                "parameters" => Dict{String,String}(),
                 "containerOverrides" => Dict(
                     "command" => ["sleep", "60"],
                     "memory" => 128,

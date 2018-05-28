@@ -67,6 +67,7 @@ end
         role::AbstractString="",
         cmd::Cmd=``,
         num_jobs::Integer=1,
+        parameters::Dict{String, String}=Dict{String, String}(),
     ) -> BatchJob
 
 Handles submitting a BatchJob based on various potential defaults.
@@ -93,6 +94,7 @@ function run_batch(;
     role::AbstractString="",
     cmd::Cmd=``,
     num_jobs::Integer=1,
+    parameters::Dict{String, String}=Dict{String, String}(),
 )
     if isa(definition, AbstractString)
         definition = isempty(definition) ? nothing : definition
@@ -186,6 +188,7 @@ function run_batch(;
                 memory=memory,
                 cmd=cmd,
                 region=region,
+                parameters=parameters,
             )
         end
     elseif definition === nothing
@@ -198,6 +201,7 @@ function run_batch(;
             memory=memory,
             cmd=cmd,
             region=region,
+            parameters=parameters,
         )
     end
 
@@ -214,6 +218,7 @@ function run_batch(;
         definition,
         queue;
         container=container_overrides,
+        parameters=parameters,
         region=region,
         num_jobs=num_jobs,
     )

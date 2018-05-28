@@ -14,7 +14,7 @@ const ONLINE = strip.(split(get(ENV, "ONLINE", ""), r"\s*,\s*"))
 
 # Partially emulates the output from the AWS batch manager test stack
 const LEGACY_STACK = Dict(
-    "ManagerJobQueueArn" => "arn:aws:batch:us-east-1:292522074875:job-queue/Replatforming-Manager",
+    "ManagerJobQueueArn" => "Replatforming-Manager",
     "JobName" => "aws-batch-test",
     "JobDefinitionName" => "aws-batch-test",
     "JobRoleArn" => "arn:aws:iam::292522074875:role/AWSBatchClusterManagerJobRole",
@@ -52,6 +52,7 @@ include("mock.jl")
                     memory = 1024,
                     role = STACK["JobRoleArn"],
                     cmd = `julia -e 'println("Hello World!")'`,
+                    parameters = Dict{String, String}("region" => "us-east-1"),
                 )
 
                 @test wait(job, [AWSBatch.SUCCEEDED]) == true
@@ -64,7 +65,8 @@ include("mock.jl")
                 # Test job details were set correctly
                 job_details = describe(job)
                 @test job_details["jobName"] == "aws-batch-test"
-                @test job_details["jobQueue"] == STACK["ManagerJobQueueArn"]
+                @test contains(job_details["jobQueue"], STACK["ManagerJobQueueArn"])
+                @test job_details["parameters"] == Dict("region" => "us-east-1")
 
                 # Test job definition and container parameters were set correctly
                 job_definition = JobDefinition(job)
@@ -90,6 +92,62 @@ include("mock.jl")
                 deregister(job_definition)
             end
 
+            @testset "Job parameters" begin
+                # Use parameter substitution placeholders in the command field
+                command = Cmd(["julia", "-e", "Ref::juliacmd"])
+
+                # Set a default output string when registering the job definition
+                job_definition = register(
+                    "aws-batch-parameters-test";
+                    image=JULIA_BAKED_IMAGE,
+                    role=STACK["JobRoleArn"],
+                    vcpus=1,
+                    memory=1024,
+                    cmd=command,
+                    region="us-east-1",
+                    parameters=Dict("juliacmd" => "println(\"Default String\")"),
+                )
+
+                # Override the default output string
+                job = run_batch(;
+                    name = "aws-batch-parameters-test",
+                    definition = job_definition,
+                    queue = STACK["ManagerJobQueueArn"],
+                    image = JULIA_BAKED_IMAGE,
+                    vcpus = 1,
+                    memory = 1024,
+                    role = STACK["JobRoleArn"],
+                    cmd = command,
+                    parameters=Dict("juliacmd" => "println(\"Hello World!\")"),
+                )
+
+                @test wait(state -> state < AWSBatch.SUCCEEDED, job)
+                @test status(job) == AWSBatch.SUCCEEDED
+
+                # Test the default string was overrriden succesfully
+                events = log_events(job)
+                @test length(events) == 1
+                @test first(events).message == "Hello World!"
+
+                # Test job details were set correctly
+                job_details = describe(job)
+                @test job_details["parameters"] == Dict(
+                    "juliacmd" => "println(\"Hello World!\")"
+                )
+
+                job_definition = JobDefinition(job)
+                job_definition_details = first(describe(job_definition)["jobDefinitions"])
+                job_definition_details["parameters"] = Dict(
+                    "juliacmd" => "println(\"Default String\")"
+                )
+
+                container_properties = job_definition_details["containerProperties"]
+                @test container_properties["command"] == ["julia", "-e", "Ref::juliacmd"]
+
+                # Deregister job definition
+                deregister(job_definition)
+            end
+
             @testset "Array job" begin
                 job = run_batch(;
                     name = "aws-batch-array-job-test",
@@ -103,7 +161,7 @@ include("mock.jl")
                     num_jobs = 3,
                 )
 
-                @test wait(job, [AWSBatch.SUCCEEDED]) == true
+                @test wait(state -> state < AWSBatch.SUCCEEDED, job)
                 @test status(job) == AWSBatch.SUCCEEDED
 
                 # Test array job was submitted properly
@@ -150,7 +208,11 @@ include("mock.jl")
                 job_definition = JobDefinition(job)
                 @test isregistered(job_definition) == true
 
-                @test_throws ErrorException wait(job, [AWSBatch.SUCCEEDED]; timeout=0)
+                @test_throws ErrorException wait(
+                    state -> state < AWSBatch.SUCCEEDED,
+                    job;
+                    timeout=0
+                )
 
                 deregister(job_definition)
 
