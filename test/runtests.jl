@@ -23,6 +23,7 @@ const LEGACY_STACK = Dict(
 
 const AWS_STACKNAME = get(ENV, "AWS_STACKNAME", "")
 const STACK = isempty(AWS_STACKNAME) ? LEGACY_STACK : stack_output(AWS_STACKNAME)
+const JULIA_BAKED_IMAGE = "292522074875.dkr.ecr.us-east-1.amazonaws.com/julia-baked:0.6"
 
 Memento.config("debug"; fmt="[{level} | {name}]: {msg}")
 setlevel!(getlogger(AWSBatch), "info")
@@ -46,7 +47,7 @@ include("mock.jl")
                     name = "aws-batch-test",
                     definition = "aws-batch-test",
                     queue = STACK["ManagerJobQueueArn"],
-                    image = STACK["EcrUri"],
+                    image = JULIA_BAKED_IMAGE,
                     vcpus = 1,
                     memory = 1024,
                     role = STACK["JobRoleArn"],
@@ -76,7 +77,7 @@ include("mock.jl")
                 @test job_definition_details["type"] == "container"
 
                 container_properties = job_definition_details["containerProperties"]
-                @test container_properties["image"] == STACK["EcrUri"]
+                @test container_properties["image"] == JULIA_BAKED_IMAGE
                 @test container_properties["vcpus"] == 1
                 @test container_properties["memory"] == 1024
                 @test container_properties["command"] == [
@@ -94,7 +95,7 @@ include("mock.jl")
                     name = "aws-batch-array-job-test",
                     definition = "aws-batch-test",
                     queue = STACK["ManagerJobQueueArn"],
-                    image = STACK["EcrUri"],
+                    image = JULIA_BAKED_IMAGE,
                     vcpus = 1,
                     memory = 1024,
                     role = STACK["JobRoleArn"],
@@ -139,7 +140,7 @@ include("mock.jl")
                     name = "aws-bath-timeout-job-test",
                     definition = "aws-batch-test",
                     queue = STACK["ManagerJobQueueArn"],
-                    image = STACK["EcrUri"],
+                    image = JULIA_BAKED_IMAGE,
                     vcpus = 1,
                     memory = 1024,
                     role = STACK["JobRoleArn"],
@@ -164,7 +165,7 @@ include("mock.jl")
                     name = "aws-batch-failed-job-test",
                     definition = "aws-batch-test",
                     queue = STACK["ManagerJobQueueArn"],
-                    image = STACK["EcrUri"],
+                    image = JULIA_BAKED_IMAGE,
                     vcpus = 1,
                     memory = 1024,
                     role = STACK["JobRoleArn"],
