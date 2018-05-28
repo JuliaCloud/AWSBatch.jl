@@ -14,7 +14,7 @@ const ONLINE = strip.(split(get(ENV, "ONLINE", ""), r"\s*,\s*"))
 
 # Partially emulates the output from the AWS batch manager test stack
 const LEGACY_STACK = Dict(
-    "ManagerJobQueueArn" => "arn:aws:batch:us-east-1:292522074875:job-queue/Replatforming-Manager",
+    "ManagerJobQueueArn" => "Replatforming-Manager",
     "JobName" => "aws-batch-test",
     "JobDefinitionName" => "aws-batch-test",
     "JobRoleArn" => "arn:aws:iam::292522074875:role/AWSBatchClusterManagerJobRole",
@@ -65,7 +65,7 @@ include("mock.jl")
                 # Test job details were set correctly
                 job_details = describe(job)
                 @test job_details["jobName"] == "aws-batch-test"
-                @test job_details["jobQueue"] == STACK["ManagerJobQueueArn"]
+                @test contains(job_details["jobQueue"], STACK["ManagerJobQueueArn"])
                 @test job_details["parameters"] == Dict("region" => "us-east-1")
 
                 # Test job definition and container parameters were set correctly
@@ -99,7 +99,7 @@ include("mock.jl")
                 # Set a default output string when registering the job definition
                 job_definition = register(
                     "aws-batch-parameters-test";
-                    image=STACK["EcrUri"],
+                    image=JULIA_BAKED_IMAGE,
                     role=STACK["JobRoleArn"],
                     vcpus=1,
                     memory=1024,
@@ -112,8 +112,8 @@ include("mock.jl")
                 job = run_batch(;
                     name = "aws-batch-parameters-test",
                     definition = job_definition,
-                    queue = STACK["JobQueueArn"],
-                    image = STACK["EcrUri"],
+                    queue = STACK["ManagerJobQueueArn"],
+                    image = JULIA_BAKED_IMAGE,
                     vcpus = 1,
                     memory = 1024,
                     role = STACK["JobRoleArn"],
