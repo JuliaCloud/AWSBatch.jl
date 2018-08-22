@@ -2,7 +2,7 @@ julia 0.6
 AutoHashEquals 0.2
 AWSCore 0.3.0
 AWSSDK 0.2.0
-Compat 0.41.0
+Compat 0.69.0
 Mocking 0.3.3
 Memento 0.7
 DataStructures 0.2.9

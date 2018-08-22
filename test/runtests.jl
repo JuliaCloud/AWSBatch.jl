@@ -5,7 +5,9 @@ using AWSBatch
 using AWSCore: AWSConfig
 using AWSTools.CloudFormation: stack_output
 
-using Base.Test
+using Compat: occursin
+using Compat.Test
+using Compat.Dates
 using Memento
 
 
@@ -65,7 +67,7 @@ include("mock.jl")
                 # Test job details were set correctly
                 job_details = describe(job)
                 @test job_details["jobName"] == "aws-batch-test"
-                @test contains(job_details["jobQueue"], STACK["ManagerJobQueueArn"])
+                @test occursin(STACK["ManagerJobQueueArn"], job_details["jobQueue"])
                 @test job_details["parameters"] == Dict("region" => "us-east-1")
 
                 # Test job definition and container parameters were set correctly

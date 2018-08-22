@@ -106,10 +106,10 @@ to just return "us-east-1".
 function mock_readstring(cmd::CmdRedirect)
     cmd_exec = cmd.cmd.exec
 
-    result = if cmd_exec[1] == "curl" && contains(cmd_exec[2], "availability-zone")
+    result = if cmd_exec[1] == "curl" && occursin("availability-zone", cmd_exec[2])
         return "us-east-1"
     else
-        return Base.readstring(cmd)
+        return read(cmd, String)
     end
 end
 
