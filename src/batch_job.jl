@@ -15,7 +15,7 @@ Stores a batch job id in order to:
 # Fields
 - `id::AbstractString`: jobId
 """
-struct BatchJob
+@auto_hash_equals struct BatchJob
     id::AbstractString
 end
 

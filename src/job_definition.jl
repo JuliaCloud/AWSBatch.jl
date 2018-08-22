@@ -6,7 +6,7 @@ import AWSSDK.Batch:
 
 Stores the job definition arn including the revision.
 """
-struct JobDefinition
+@auto_hash_equals struct JobDefinition
     arn::AbstractString
 
     function JobDefinition(name::AbstractString)
@@ -40,27 +40,43 @@ A job definition can only be reused if:
 function job_definition_arn(
     definition_name::AbstractString;
     image::AbstractString="",
-    role::AbstractString=""
+    role::AbstractString="",
 )
     response = describe_job_definition(definition_name)
-    isempty(response["jobDefinitions"]) && return nothing
+    if !isempty(response["jobDefinitions"])
 
-    latest = first(response["jobDefinitions"])
-    for definition in response["jobDefinitions"]
-        if definition["status"] == "ACTIVE" && definition["revision"] > latest["revision"]
-            latest = definition
+        latest = first(response["jobDefinitions"])
+        for definition in response["jobDefinitions"]
+            if definition["status"] == "ACTIVE" && definition["revision"] > latest["revision"]
+                latest = definition
+            end
+        end
+
+        if (
+            latest["status"] == "ACTIVE" &&
+            latest["type"] == "container" &&
+            (latest["containerProperties"]["image"] == image || isempty(image)) &&
+            (latest["containerProperties"]["jobRoleArn"] == role || isempty(role))
+        )
+            info(
+                logger,
+                string(
+                    "Found previously registered job definition: ",
+                    "\"$(latest["jobDefinitionArn"])\"",
+                )
+            )
+            return latest["jobDefinitionArn"]
         end
     end
-    if (
-        latest["status"] == "ACTIVE" &&
-        latest["type"] == "container" &&
-        (latest["containerProperties"]["image"] == image || isempty(image)) &&
-        (latest["containerProperties"]["jobRoleArn"] == role || isempty(role))
+
+    notice(
+        logger,
+        string(
+            "Did not find a previously registered ACTIVE job definition for ",
+            "\"$definition_name\".",
+        )
     )
-        return latest["jobDefinitionArn"]
-    else
-        return nothing
-    end
+    return nothing
 end
 
 """

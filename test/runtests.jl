@@ -25,7 +25,7 @@ const AWS_STACKNAME = get(ENV, "AWS_STACKNAME", "")
 const STACK = isempty(AWS_STACKNAME) ? LEGACY_STACK : stack_output(AWS_STACKNAME)
 const JULIA_BAKED_IMAGE = "292522074875.dkr.ecr.us-east-1.amazonaws.com/julia-baked:0.6"
 
-Memento.config("debug"; fmt="[{level} | {name}]: {msg}")
+Memento.config!("debug"; fmt="[{level} | {name}]: {msg}")
 setlevel!(getlogger(AWSBatch), "info")
 
 include("mock.jl")
@@ -89,7 +89,39 @@ include("mock.jl")
                 ]
                 @test container_properties["jobRoleArn"] == STACK["JobRoleArn"]
 
+                # Reuse job definition
+                job = run_batch(;
+                    name = "aws-batch-test",
+                    definition = "aws-batch-test",
+                    queue = STACK["ManagerJobQueueArn"],
+                    image = JULIA_BAKED_IMAGE,
+                    vcpus = 1,
+                    memory = 1024,
+                    role = STACK["JobRoleArn"],
+                    cmd = `julia -e 'println("Hello World!")'`,
+                    parameters = Dict{String, String}("region" => "us-east-1"),
+                )
+
+                @test wait(job, [AWSBatch.SUCCEEDED]) == true
+                @test status(job) == AWSBatch.SUCCEEDED
+
+                # Test job definition and container parameters were set correctly
+                job_definition_2 = JobDefinition(job)
+                @test job_definition_2 == job_definition
+
                 deregister(job_definition)
+            end
+
+            @testset "Job registration disallowed" begin
+                @test_throws BatchEnvironmentError run_batch(;
+                    name = "aws-batch-no-job-registration-test",
+                    queue = STACK["ManagerJobQueueArn"],
+                    image = JULIA_BAKED_IMAGE,
+                    role = STACK["JobRoleArn"],
+                    cmd = `julia -e 'println("Hello World!")'`,
+                    parameters = Dict{String, String}("region" => "us-east-1"),
+                    allow_job_registration = false,
+                )
             end
 
             @testset "Job parameters" begin
