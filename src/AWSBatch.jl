@@ -1,16 +1,14 @@
 __precompile__()
 module AWSBatch
 
-using AWSCore: AWSConfig, AWSCredentials
-
+using AutoHashEquals
 using AWSSDK.Batch
 using AWSSDK.CloudWatchLogs
-
 using Memento
 using Mocking
 
-using Compat: Nothing
-using Compat: AbstractDict
+using AWSCore: AWSConfig, AWSCredentials
+using Compat: Nothing, AbstractDict
 using DataStructures: OrderedDict
 
 import Base: showerror
@@ -28,7 +26,8 @@ export
     log_events,
     isregistered,
     register,
-    deregister
+    deregister,
+    BatchEnvironmentError
 
 
 const logger = getlogger(current_module())
@@ -95,6 +94,7 @@ function run_batch(;
     cmd::Cmd=``,
     num_jobs::Integer=1,
     parameters::Dict{String, String}=Dict{String, String}(),
+    allow_job_registration::Bool=true,
 )
     if isa(definition, AbstractString)
         definition = isempty(definition) ? nothing : definition
@@ -165,21 +165,28 @@ function run_batch(;
         throw(BatchEnvironmentError(
             "Unable to perform AWS Batch introspection when not running within " *
             "an AWS Batch job. Current job parameters are: " *
-            "name: $name\n" *
-            "queue: $queue\n" *
-            "memory: $memory\n"
+            "\nname=$name" *
+            "\nqueue=$queue" *
+            "\nmemory=$memory"
         ))
     end
 
     # Reuse a previously registered job definition if available.
-    # If no job definition exists that can be reused, a new job definition is created
-    # under the current job specifications.
     if isa(definition, AbstractString)
         reusable_job_definition_arn = job_definition_arn(definition; image=image, role=role)
 
         if reusable_job_definition_arn !== nothing
             definition = JobDefinition(reusable_job_definition_arn)
-        else
+        end
+    elseif definition === nothing
+         # Use the job name as the definiton name since the definition name was not specified
+        definition = name
+    end
+
+    # If no job definition exists that can be reused, a new job definition is created
+    # under the current job specifications.
+    if isa(definition, AbstractString)
+        if allow_job_registration
             definition = register(
                 definition;
                 image=image,
@@ -190,19 +197,18 @@ function run_batch(;
                 region=region,
                 parameters=parameters,
             )
+        else
+            throw(BatchEnvironmentError(string(
+                "Attempting to register job definition \"$definition\" but registering ",
+                "job definitions is disallowed. Current job definition parameters are: ",
+                "\nimage=$image",
+                "\nrole=$role",
+                "\nvcpus=$vcpus",
+                "\nmemory=$memory",
+                "\ncmd=$cmd",
+                "\nparameters=$parameters",
+            )))
         end
-    elseif definition === nothing
-        # Use the job name as the definiton name since the definition name was not specified
-        definition = register(
-            name;
-            image=image,
-            role=role,
-            vcpus=vcpus,
-            memory=memory,
-            cmd=cmd,
-            region=region,
-            parameters=parameters,
-        )
     end
 
     # Parameters that can be overridden are `memory`, `vcpus`, `command`, and `environment`
