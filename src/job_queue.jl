@@ -18,7 +18,7 @@ max_vcpus(queue::JobQueue) = sum(max_vcpus(ce) for ce in compute_environments(qu
 function compute_environments(queue::JobQueue)
     ce_order = describe(queue)["computeEnvironmentOrder"]
 
-    compute_envs = Vector{ComputeEnvironment}(length(ce_order))
+    compute_envs = Vector{ComputeEnvironment}(undef, length(ce_order))
     for ce in ce_order
         i, arn = ce["order"], ce["computeEnvironment"]
         compute_envs[i] = ComputeEnvironment(arn)

@@ -8,10 +8,8 @@ using Memento
 using Mocking
 
 using AWSCore: AWSConfig, AWSCredentials
-using Compat: Nothing, AbstractDict
+using Compat: Nothing, AbstractDict, @__MODULE__, undef
 using DataStructures: OrderedDict
-
-import Base: showerror
 
 export
     BatchJob,
@@ -30,7 +28,7 @@ export
     BatchEnvironmentError
 
 
-const logger = getlogger(current_module())
+const logger = getlogger(@__MODULE__)
 # Register the module level logger at runtime so that folks can access the logger via `getlogger(MyModule)`
 # NOTE: If this line is not included then the precompiled `MyModule.logger` won't be registered at runtime.
 __init__() = Memento.register(logger)
@@ -48,7 +46,7 @@ struct BatchEnvironmentError <: Exception
     message::String
 end
 
-function showerror(io::IO, e::BatchEnvironmentError)
+function Base.showerror(io::IO, e::BatchEnvironmentError)
     print(io, "BatchEnvironmentError: ")
     print(io, e.message)
 end
