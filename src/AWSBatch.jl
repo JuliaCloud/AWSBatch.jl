@@ -6,9 +6,10 @@ using AWSSDK.Batch
 using AWSSDK.CloudWatchLogs
 using Memento
 using Mocking
+using Compat.Dates
 
 using AWSCore: AWSConfig, AWSCredentials
-using Compat: Nothing, AbstractDict, @__MODULE__, undef
+using Compat: Nothing, AbstractDict, @__MODULE__, undef, devnull
 using DataStructures: OrderedDict
 
 export
@@ -126,7 +127,7 @@ function run_batch(;
         zone = @mock readstring(
             pipeline(
                 `curl http://169.254.169.254/latest/meta-data/placement/availability-zone`;
-                stderr=DevNull
+                stderr=devnull
             )
         )
         isempty(region) && (region = chop(zone))
