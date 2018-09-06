@@ -28,7 +28,8 @@ const STACK = isempty(AWS_STACKNAME) ? LEGACY_STACK : stack_output(AWS_STACKNAME
 const JULIA_BAKED_IMAGE = "292522074875.dkr.ecr.us-east-1.amazonaws.com/julia-baked:0.6"
 
 Memento.config!("debug"; fmt="[{level} | {name}]: {msg}")
-setlevel!(getlogger(AWSBatch), "info")
+const logger = getlogger(AWSBatch)
+setlevel!(logger, "info")
 
 include("mock.jl")
 
@@ -280,6 +281,6 @@ include("mock.jl")
             end
         end
     else
-        warn("Skipping ONLINE tests")
+        warn(logger, "Skipping ONLINE tests")
     end
 end
