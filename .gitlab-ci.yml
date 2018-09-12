@@ -13,6 +13,7 @@ stages:
   before_script:
     - curl -s -o julia-ci https://gitlab.invenia.ca/infrastructure/gitlab-ci-helper/raw/master/julia-ci
     - chmod +x julia-ci
+    - ./julia-ci install-cred-helper
     - ./julia-ci install $JULIA_VERSION
   script:
     - source julia-ci export
@@ -31,7 +32,6 @@ stages:
   variables:
     JULIA_VERSION: "0.7"
     ONLINE: ""
-  allow_failure: true
   <<: *test_shell
 
 .test_shell_nightly: &test_shell_nightly
