@@ -98,18 +98,18 @@ const DESCRIBE_JOBS_RESP = Dict(
 
 
 """
-    Mock.readstring(cmd::CmdRedirect, pass::Bool=true)
+    Mock.read(cmd::CmdRedirect, ::Type{String})
 
-Mocks the CmdRedirect produced from ``pipeline(`curl http://169.254.169.254/latest/meta-data/placement/availability-zone`)``
-to just return "us-east-1".
+Mocks the CmdRedirect produced from
+``pipeline(`curl http://169.254.169.254/latest/meta-data/placement/availability-zone`)``
+to just return "us-east-1a".
 """
-function mock_readstring(cmd::CmdRedirect)
+function mock_read(cmd::CmdRedirect, ::Type{String})
     cmd_exec = cmd.cmd.exec
-
     result = if cmd_exec[1] == "curl" && occursin("availability-zone", cmd_exec[2])
-        return "us-east-1"
+        return "us-east-1a"
     else
-        return read(cmd, String)
+        return Base.read(cmd, String)
     end
 end
 

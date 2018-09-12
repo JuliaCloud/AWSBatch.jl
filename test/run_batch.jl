@@ -69,7 +69,7 @@ end
             ]
 
             patches = [
-                @patch readstring(cmd::AbstractCmd) = mock_readstring(cmd)
+                @patch read(cmd::AbstractCmd, ::Type{String}) = mock_read(cmd, String)
                 @patch describe_jobs(args...) = DESCRIBE_JOBS_RESP
                 @patch describe_job_definitions(args...) = Dict("jobDefinitions" => Dict())
                 @patch register_job_definition(config, input) = register_job_def(
@@ -102,7 +102,7 @@ end
             ]
 
             patches = [
-                @patch readstring(cmd::AbstractCmd) = mock_readstring(cmd)
+                @patch read(cmd::AbstractCmd, ::Type{String}) = mock_read(cmd, String)
                 @patch describe_jobs(args...) = DESCRIBE_JOBS_RESP
                 @patch describe_job_definitions(args...) = Dict("jobDefinitions" => Dict())
                 @patch submit_job(config, input) = submit_job(config, input, expected_job)

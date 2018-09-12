@@ -124,11 +124,12 @@ function run_batch(;
         job_queue = ENV["AWS_BATCH_JQ_NAME"]
 
         # Get the zone information from the EC2 instance metadata.
-        zone = @mock readstring(
+        zone = @mock read(
             pipeline(
                 `curl http://169.254.169.254/latest/meta-data/placement/availability-zone`;
                 stderr=devnull
-            )
+            ),
+            String
         )
         isempty(region) && (region = chop(zone))
 

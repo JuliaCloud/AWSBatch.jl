@@ -186,7 +186,7 @@ include("mock.jl")
             @testset "Array job" begin
                 job = run_batch(;
                     name = "aws-batch-array-job-test",
-                    definition = "aws-batch-test",
+                    definition = "aws-batch-array-job-test",
                     queue = STACK["ManagerJobQueueArn"],
                     image = JULIA_BAKED_IMAGE,
                     vcpus = 1,
@@ -231,7 +231,7 @@ include("mock.jl")
 
                 job = run_batch(;
                     name = "aws-bath-timeout-job-test",
-                    definition = "aws-batch-test",
+                    definition = "aws-bath-timeout-job-test",
                     queue = STACK["ManagerJobQueueArn"],
                     image = JULIA_BAKED_IMAGE,
                     vcpus = 1,
@@ -260,7 +260,7 @@ include("mock.jl")
 
                 job = run_batch(;
                     name = "aws-batch-failed-job-test",
-                    definition = "aws-batch-test",
+                    definition = "aws-batch-failed-job-test",
                     queue = STACK["ManagerJobQueueArn"],
                     image = JULIA_BAKED_IMAGE,
                     vcpus = 1,
