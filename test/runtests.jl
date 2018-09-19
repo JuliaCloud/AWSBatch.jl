@@ -26,6 +26,7 @@ const LEGACY_STACK = Dict(
 const AWS_STACKNAME = get(ENV, "AWS_STACKNAME", "")
 const STACK = isempty(AWS_STACKNAME) ? LEGACY_STACK : stack_output(AWS_STACKNAME)
 const JULIA_BAKED_IMAGE = "292522074875.dkr.ecr.us-east-1.amazonaws.com/julia-baked:0.6"
+const JOB_TIMEOUT = 900
 
 Memento.config!("debug"; fmt="[{level} | {name}]: {msg}")
 const logger = getlogger(AWSBatch)
@@ -43,7 +44,7 @@ include("mock.jl")
 
     if "batch" in ONLINE
         @testset "Online" begin
-            info("Running ONLINE tests")
+            info(logger, "Running ONLINE tests")
 
             @testset "Job Submission" begin
                 job = run_batch(;
@@ -58,7 +59,7 @@ include("mock.jl")
                     parameters = Dict{String, String}("region" => "us-east-1"),
                 )
 
-                @test wait(job, [AWSBatch.SUCCEEDED]) == true
+                @test wait(job, [AWSBatch.SUCCEEDED]; timeout=JOB_TIMEOUT) == true
                 @test status(job) == AWSBatch.SUCCEEDED
 
                 events = log_events(job)
@@ -105,7 +106,7 @@ include("mock.jl")
                     parameters = Dict{String, String}("region" => "us-east-1"),
                 )
 
-                @test wait(job, [AWSBatch.SUCCEEDED]) == true
+                @test wait(job, [AWSBatch.SUCCEEDED]; timeout=JOB_TIMEOUT) == true
                 @test status(job) == AWSBatch.SUCCEEDED
 
                 # Test job definition and container parameters were set correctly
@@ -156,7 +157,7 @@ include("mock.jl")
                     parameters=Dict("juliacmd" => "println(\"Hello World!\")"),
                 )
 
-                @test wait(state -> state < AWSBatch.SUCCEEDED, job)
+                @test wait(state -> state < AWSBatch.SUCCEEDED, job; timeout=JOB_TIMEOUT)
                 @test status(job) == AWSBatch.SUCCEEDED
 
                 # Test the default string was overrriden succesfully
@@ -196,7 +197,7 @@ include("mock.jl")
                     num_jobs = 3,
                 )
 
-                @test wait(state -> state < AWSBatch.SUCCEEDED, job)
+                @test wait(state -> state < AWSBatch.SUCCEEDED, job; timeout=JOB_TIMEOUT)
                 @test status(job) == AWSBatch.SUCCEEDED
 
                 # Test array job was submitted properly
@@ -227,10 +228,10 @@ include("mock.jl")
             end
 
             @testset "Job Timed Out" begin
-                info("Testing job timeout")
+                info(logger, "Testing job timeout")
 
                 job = run_batch(;
-                    name = "aws-bath-timeout-job-test",
+                    name = "aws-batch-timeout-job-test",
                     definition = "aws-bath-timeout-job-test",
                     queue = STACK["ManagerJobQueueArn"],
                     image = JULIA_BAKED_IMAGE,
@@ -243,7 +244,7 @@ include("mock.jl")
                 job_definition = JobDefinition(job)
                 @test isregistered(job_definition) == true
 
-                @test_throws ErrorException wait(
+                @test_throws BatchJobError wait(
                     state -> state < AWSBatch.SUCCEEDED,
                     job;
                     timeout=0
@@ -256,7 +257,7 @@ include("mock.jl")
             end
 
             @testset "Failed Job" begin
-                info("Testing job failure")
+                info(logger, "Testing job failure")
 
                 job = run_batch(;
                     name = "aws-batch-failed-job-test",
@@ -272,12 +273,20 @@ include("mock.jl")
                 job_definition = JobDefinition(job)
                 @test isregistered(job_definition) == true
 
-                @test_throws ErrorException wait(job, [AWSBatch.SUCCEEDED])
+                @test_throws BatchJobError wait(
+                    job,
+                    [AWSBatch.SUCCEEDED];
+                    timeout=JOB_TIMEOUT
+                )
 
                 deregister(job_definition)
 
                 events = log_events(job)
-                @test first(events).message == "ERROR: Testing job failure"
+
+                # Cannot guarantee this job failure will always have logs
+                if length(events) > 0
+                    @test first(events).message == "ERROR: Testing job failure"
+                end
             end
         end
     else

@@ -1,6 +1,14 @@
 import AWSSDK.Batch: describe_jobs, submit_job
 import AWSSDK.CloudWatchLogs: get_log_events
 
+struct BatchJobError <: Exception
+    message::String
+end
+
+function Base.showerror(io::IO, e::BatchJobError)
+    print(io, "BatchJobError: ")
+    print(io, e.message)
+end
 
 """
     BatchJob
@@ -157,7 +165,7 @@ function Base.wait(
             message *= " Last known state $last_state"
         end
 
-        error(logger, message)
+        throw(BatchJobError(message))
     end
 
     return completed
@@ -186,7 +194,7 @@ function Base.wait(
         if state in cond
             false
         elseif state in failure
-            error(logger, "Job $(job.id) hit failure condition $state")
+            throw(BatchJobError("Job $(job.id) hit failure condition $state"))
             false
         else
             true
