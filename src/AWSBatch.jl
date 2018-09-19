@@ -26,7 +26,8 @@ export
     isregistered,
     register,
     deregister,
-    BatchEnvironmentError
+    BatchEnvironmentError,
+    BatchJobError
 
 
 const logger = getlogger(@__MODULE__)
