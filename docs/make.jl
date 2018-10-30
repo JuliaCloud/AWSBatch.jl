@@ -13,4 +13,6 @@ makedocs(;
         "assets/invenia.css",
         "assets/logo.png",
     ],
+    strict = true,
+    checkdocs = :none,
 )

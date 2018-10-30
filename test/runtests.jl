@@ -25,7 +25,7 @@ const LEGACY_STACK = Dict(
 
 const AWS_STACKNAME = get(ENV, "AWS_STACKNAME", "")
 const STACK = isempty(AWS_STACKNAME) ? LEGACY_STACK : stack_output(AWS_STACKNAME)
-const JULIA_BAKED_IMAGE = "292522074875.dkr.ecr.us-east-1.amazonaws.com/julia-baked:0.6"
+const JULIA_BAKED_IMAGE = "468665244580.dkr.ecr.us-east-1.amazonaws.com/julia-baked:0.6"
 const JOB_TIMEOUT = 900
 
 Memento.config!("debug"; fmt="[{level} | {name}]: {msg}")
