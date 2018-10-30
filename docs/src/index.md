@@ -72,7 +72,7 @@ AWSBatch.job_definition_arn(::AbstractString)
 AWSBatch.register(::AbstractString)
 AWSBatch.deregister(::JobDefinition)
 AWSBatch.isregistered(::JobDefinition)
-AWSBatch.describe(::Union{AbstractString, JobDefinition})
+AWSBatch.describe(::JobDefinition)
 ```
 
 ### JobState
