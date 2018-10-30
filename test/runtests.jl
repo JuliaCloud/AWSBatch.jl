@@ -14,17 +14,10 @@ using Memento
 # Enables the running of the "batch" online tests. e.g ONLINE=batch
 const ONLINE = strip.(split(get(ENV, "ONLINE", ""), r"\s*,\s*"))
 
-# Partially emulates the output from the AWS batch manager test stack
-const LEGACY_STACK = Dict(
-    "ManagerJobQueueArn" => "Replatforming-Manager",
-    "JobName" => "aws-batch-test",
-    "JobDefinitionName" => "aws-batch-test",
-    "JobRoleArn" => "arn:aws:iam::292522074875:role/AWSBatchClusterManagerJobRole",
-    "EcrUri" => "292522074875.dkr.ecr.us-east-1.amazonaws.com/aws-cluster-managers-test:latest",
-)
-
+# Run the tests on a stack created with the "test/batch.yml" CloudFormation template
+# found in AWSClusterMangers.jl
 const AWS_STACKNAME = get(ENV, "AWS_STACKNAME", "")
-const STACK = isempty(AWS_STACKNAME) ? LEGACY_STACK : stack_output(AWS_STACKNAME)
+const STACK = !isempty(AWS_STACKNAME) ? stack_output(AWS_STACKNAME) : Dict()
 const JULIA_BAKED_IMAGE = "468665244580.dkr.ecr.us-east-1.amazonaws.com/julia-baked:0.6"
 const JOB_TIMEOUT = 900
 
@@ -42,7 +35,7 @@ include("mock.jl")
     include("job_state.jl")
     include("run_batch.jl")
 
-    if "batch" in ONLINE
+    if "batch" in ONLINE && !isempty(AWS_STACKNAME)
         @testset "Online" begin
             info(logger, "Running ONLINE tests")
 
@@ -290,6 +283,10 @@ include("mock.jl")
             end
         end
     else
-        warn(logger, "Skipping ONLINE tests")
+        warn(
+            logger,
+            "Skipping ONLINE tests. Set `ENV[\"ONLINE\"] = \"batch\"` and " *
+            "`ENV[\"AWS_STACKNAME\"]` to run."
+        )
     end
 end
