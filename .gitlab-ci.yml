@@ -183,7 +183,7 @@ pages:
     - ./julia-ci install $JULIA_VERSION
   script:
     - source julia-ci export
-    - ./julia-ci publish-docs public
+    - ./julia-ci publish-docs
   after_script:
     - ./julia-ci clean
   artifacts:
