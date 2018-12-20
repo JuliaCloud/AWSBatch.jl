@@ -43,7 +43,7 @@ include("mock.jl")
                 job = run_batch(;
                     name = "aws-batch-test",
                     definition = "aws-batch-test",
-                    queue = STACK["ManagerJobQueueArn"],
+                    queue = STACK["JobQueueArn"],
                     image = JULIA_BAKED_IMAGE,
                     vcpus = 1,
                     memory = 1024,
@@ -62,7 +62,7 @@ include("mock.jl")
                 # Test job details were set correctly
                 job_details = describe(job)
                 @test job_details["jobName"] == "aws-batch-test"
-                @test occursin(STACK["ManagerJobQueueArn"], job_details["jobQueue"])
+                @test occursin(STACK["JobQueueArn"], job_details["jobQueue"])
                 @test job_details["parameters"] == Dict("region" => "us-east-1")
 
                 # Test job definition and container parameters were set correctly
@@ -90,7 +90,7 @@ include("mock.jl")
                 job = run_batch(;
                     name = "aws-batch-test",
                     definition = "aws-batch-test",
-                    queue = STACK["ManagerJobQueueArn"],
+                    queue = STACK["JobQueueArn"],
                     image = JULIA_BAKED_IMAGE,
                     vcpus = 1,
                     memory = 1024,
@@ -112,7 +112,7 @@ include("mock.jl")
             @testset "Job registration disallowed" begin
                 @test_throws BatchEnvironmentError run_batch(;
                     name = "aws-batch-no-job-registration-test",
-                    queue = STACK["ManagerJobQueueArn"],
+                    queue = STACK["JobQueueArn"],
                     image = JULIA_BAKED_IMAGE,
                     role = STACK["JobRoleArn"],
                     cmd = `julia -e 'println("Hello World!")'`,
@@ -141,7 +141,7 @@ include("mock.jl")
                 job = run_batch(;
                     name = "aws-batch-parameters-test",
                     definition = job_definition,
-                    queue = STACK["ManagerJobQueueArn"],
+                    queue = STACK["JobQueueArn"],
                     image = JULIA_BAKED_IMAGE,
                     vcpus = 1,
                     memory = 1024,
@@ -181,7 +181,7 @@ include("mock.jl")
                 job = run_batch(;
                     name = "aws-batch-array-job-test",
                     definition = "aws-batch-array-job-test",
-                    queue = STACK["ManagerJobQueueArn"],
+                    queue = STACK["JobQueueArn"],
                     image = JULIA_BAKED_IMAGE,
                     vcpus = 1,
                     memory = 1024,
@@ -226,7 +226,7 @@ include("mock.jl")
                 job = run_batch(;
                     name = "aws-batch-timeout-job-test",
                     definition = "aws-bath-timeout-job-test",
-                    queue = STACK["ManagerJobQueueArn"],
+                    queue = STACK["JobQueueArn"],
                     image = JULIA_BAKED_IMAGE,
                     vcpus = 1,
                     memory = 1024,
@@ -255,7 +255,7 @@ include("mock.jl")
                 job = run_batch(;
                     name = "aws-batch-failed-job-test",
                     definition = "aws-batch-failed-job-test",
-                    queue = STACK["ManagerJobQueueArn"],
+                    queue = STACK["JobQueueArn"],
                     image = JULIA_BAKED_IMAGE,
                     vcpus = 1,
                     memory = 1024,
