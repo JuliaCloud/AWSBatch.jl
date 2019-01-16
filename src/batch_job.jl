@@ -51,7 +51,7 @@ function submit(
     num_jobs::Integer=1,
 )
     region = isempty(region) ? "us-east-1" : region
-    config = AWSConfig(:creds => AWSCredentials(), :region => region)
+    config = aws_config(region = region)
 
     debug(logger, "Submitting job \"$name\"")
     input = [
