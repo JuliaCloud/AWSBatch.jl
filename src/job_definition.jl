@@ -104,7 +104,7 @@ function register(
     parameters::Dict{String, String}=Dict{String, String}(),
 )
     region = isempty(region) ? "us-east-1" : region
-    config = AWSConfig(:creds => AWSCredentials(), :region => region)
+    config = aws_config(region = region)
 
     debug(logger, "Registering job definition \"$definition_name\"")
     input = [

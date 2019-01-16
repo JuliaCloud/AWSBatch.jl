@@ -8,7 +8,7 @@ using Memento
 using Mocking
 using Compat.Dates
 
-using AWSCore: AWSConfig, AWSCredentials
+using AWSCore: aws_config
 using Compat: Nothing, AbstractDict, @__MODULE__, undef, devnull
 using DataStructures: OrderedDict
 
