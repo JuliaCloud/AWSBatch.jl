@@ -1,0 +1,29 @@
+name = "AWSBatch"
+uuid = "dcae83d4-2881-5875-9d49-e5534165e9c0"
+authors = ["Nicole Epp <nicole.epp@invenia.ca>", "Curtis Vogt <curtis.vogt@invenia.ca"]
+
+[deps]
+AWSCore = "4f1ea46c-232b-54a6-9b17-cc2d0f3e6598"
+AWSSDK = "0d499d91-6ae5-5d63-9313-12987b87d5ad"
+AutoHashEquals = "15f4f7f2-30c1-5605-9d31-71845cf9641f"
+DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+Memento = "f28f55f0-a522-5efc-85c2-fe41dfb9b2d9"
+Mocking = "78c3b35d-d492-501b-9361-3d52fe80e533"
+
+[compat]
+AWSCore = ">= 0.5.2"
+AWSSDK = ">= 0.2.0"
+AWSTools = ">= 0.3.1"
+AutoHashEquals = ">= 0.2.0"
+DataStructures = ">= 0.2.9"
+Memento = ">= 0.7.0"
+Mocking = ">= 0.3.3"
+julia = "1.0, 1.1"
+
+[extras]
+AWSTools = "83bcdc74-1232-581c-948a-f29122bf8259"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["AWSTools", "Test"]
