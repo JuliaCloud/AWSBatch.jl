@@ -5,7 +5,7 @@ using AutoHashEquals
 using AWSCore: aws_config
 using AWSSDK.Batch
 using AWSSDK.CloudWatchLogs
-using DataStructures: OrderedDict
+using OrderedCollections: OrderedDict
 using Dates
 using Memento
 using Mocking

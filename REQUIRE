@@ -4,4 +4,4 @@ AWSCore 0.5.2
 AWSSDK 0.2.0
 Mocking 0.3.3
 Memento 0.7
-DataStructures 0.2.9
+OrderedCollections

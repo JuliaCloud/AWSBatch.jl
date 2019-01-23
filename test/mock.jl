@@ -1,5 +1,5 @@
 import Base: AbstractCmd, CmdRedirect
-using DataStructures: OrderedDict
+using OrderedCollections: OrderedDict
 
 const BATCH_ENVS = (
     "AWS_BATCH_JOB_ID" => "24fa2d7a-64c4-49d2-8b47-f8da4fbde8e9",

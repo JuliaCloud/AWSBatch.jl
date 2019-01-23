@@ -1,4 +1,4 @@
-using DataStructures: OrderedDict
+using OrderedCollections: OrderedDict
 
 @testset "JobQueue" begin
     @testset "constructor" begin
