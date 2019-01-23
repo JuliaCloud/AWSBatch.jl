@@ -2,15 +2,13 @@ __precompile__()
 module AWSBatch
 
 using AutoHashEquals
+using AWSCore: aws_config
 using AWSSDK.Batch
 using AWSSDK.CloudWatchLogs
+using OrderedCollections: OrderedDict
+using Dates
 using Memento
 using Mocking
-using Compat.Dates
-
-using AWSCore: aws_config
-using Compat: Nothing, AbstractDict, @__MODULE__, undef, devnull
-using DataStructures: OrderedDict
 
 export
     BatchJob,

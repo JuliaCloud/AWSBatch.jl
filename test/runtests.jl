@@ -4,11 +4,9 @@ Mocking.enable(force=true)
 using AWSBatch
 using AWSCore: AWSConfig
 using AWSTools.CloudFormation: stack_output
-
-using Compat: occursin
-using Compat.Test
-using Compat.Dates
+using Dates
 using Memento
+using Test
 
 
 # Enables the running of the "batch" online tests. e.g ONLINE=batch

@@ -1,5 +1,5 @@
-import AWSSDK.Batch: describe_jobs, submit_job
-import AWSSDK.CloudWatchLogs: get_log_events
+using AWSSDK.Batch: describe_jobs, submit_job
+using AWSSDK.CloudWatchLogs: get_log_events
 
 struct BatchJobError <: Exception
     job_id::AbstractString
