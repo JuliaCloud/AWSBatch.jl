@@ -2,7 +2,6 @@ julia 0.7
 AutoHashEquals 0.2
 AWSCore 0.3.0  # Online tests require 0.5.2 but that version is Julia 1.0+
 AWSSDK 0.2.0
-Compat 0.69.0
 Mocking 0.3.3
 Memento 0.7
 DataStructures 0.2.9
