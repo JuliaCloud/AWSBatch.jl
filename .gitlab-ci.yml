@@ -9,7 +9,7 @@ include:
 
 variables:
   STACKNAME_PREFIX: sandbox-awsbatch
-  AMAZON_LINUX_IMAGE: amazonlinux:2
+  CLOUDSPY_IMAGE: 468665244580.dkr.ecr.us-east-1.amazonaws.com/cloudspy
   JULIA_IMAGE: 468665244580.dkr.ecr.us-east-1.amazonaws.com/julia-gitlab-ci:1.0
   ONLINE: ""
 
@@ -27,6 +27,9 @@ variables:
   fi
   ACCOUNT_ID=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep -oP '(?<="accountId" : ")[^"]*(?=")')
   export AWS_DEFAULT_REGION=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep -oP '(?<="region" : ")[^"]*(?=")')
+
+  # Export temp credentials. Make sure this path is absolute as Julia can change directories during testing
+  export AWS_SHARED_CREDENTIALS_FILE="$(pwd)/tmp-creds"
 
 .awscli_install: &awscli_install
   |
@@ -60,8 +63,6 @@ variables:
   |
   # Install Cloudspy in the env
   pip install git+https://gitlab-ci-token:${CI_BUILD_TOKEN}@gitlab.invenia.ca/infrastructure/cloudspy.git#egg=cloudspy
-  # Export temp credentials. Make sure this path is absolute as Julia can change directories during testing
-  export AWS_SHARED_CREDENTIALS_FILE="$(pwd)/tmp-creds"
 
 .assume_test_profile: &assume_test_profile
   |
@@ -87,15 +88,12 @@ variables:
 
 "Create Stack":
   stage: setup
-  image: $AMAZON_LINUX_IMAGE
+  image: $CLOUDSPY_IMAGE
   tags:
     - docker-ci
     - ci-account
   before_script:
     - *runtime_variables
-    - yum -y update
-    - *awscli_install
-    - *cloudspy_install
   script:
     - aws cloudformation validate-template --template-body file://test/batch.yml
     - |
@@ -192,10 +190,9 @@ variables:
   tags:
     - docker-ci
     - ci-account
-  image: $AMAZON_LINUX_IMAGE
+  image: $CLOUDSPY_IMAGE
   before_script:
     - *runtime_variables
-    - *awscli_install
   script:
     - eval $(aws-stack-outputs $STACKNAME)
     - |
