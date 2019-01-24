@@ -87,8 +87,6 @@ variables:
 
 "Create Stack":
   stage: setup
-  except:
-    - tags
   image: $AMAZON_LINUX_IMAGE
   tags:
     - docker-ci
@@ -225,6 +223,7 @@ variables:
 "Delete Stack":
   stage: teardown
   only:
+    - tags
     - master
     - /^.+\/.*master$/
   when: always
