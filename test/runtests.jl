@@ -9,14 +9,14 @@ using Memento
 using Test
 
 
-# Enables the running of the "batch" online tests. e.g ONLINE=batch
-const ONLINE = strip.(split(get(ENV, "ONLINE", ""), r"\s*,\s*"))
+# Controls the running of various tests: "local", "batch"
+const TESTS = strip.(split(get(ENV, "TESTS", "local"), r"\s*,\s*"))
 
 # Run the tests on a stack created with the "test/batch.yml" CloudFormation template
 # found in AWSClusterMangers.jl
 const AWS_STACKNAME = get(ENV, "AWS_STACKNAME", "")
 const STACK = !isempty(AWS_STACKNAME) ? stack_output(AWS_STACKNAME) : Dict()
-const JULIA_BAKED_IMAGE = "468665244580.dkr.ecr.us-east-1.amazonaws.com/julia-baked:0.6"
+const JULIA_BAKED_IMAGE = "468665244580.dkr.ecr.us-east-1.amazonaws.com/julia-baked:$VERSION"
 const JOB_TIMEOUT = 900
 
 Memento.config!("debug"; fmt="[{level} | {name}]: {msg}")
@@ -27,15 +27,19 @@ include("mock.jl")
 
 
 @testset "AWSBatch.jl" begin
-    include("compute_environment.jl")
-    include("job_queue.jl")
-    include("log_event.jl")
-    include("job_state.jl")
-    include("run_batch.jl")
+    if "local" in TESTS
+        include("compute_environment.jl")
+        include("job_queue.jl")
+        include("log_event.jl")
+        include("job_state.jl")
+        include("run_batch.jl")
+    else
+        warn(logger, "Skipping \"local\" tests. Set `ENV[\"TESTS\"] = \"local\"` to run.")
+    end
 
-    if "batch" in ONLINE && !isempty(AWS_STACKNAME)
-        @testset "Online" begin
-            info(logger, "Running ONLINE tests")
+    if "batch" in TESTS && !isempty(AWS_STACKNAME)
+        @testset "AWS Batch" begin
+            info(logger, "Running AWS Batch tests")
 
             @testset "Job Submission" begin
                 job = run_batch(;
@@ -283,7 +287,7 @@ include("mock.jl")
     else
         warn(
             logger,
-            "Skipping ONLINE tests. Set `ENV[\"ONLINE\"] = \"batch\"` and " *
+            "Skipping \"batch\" tests. Set `ENV[\"TESTS\"] = \"batch\"` and " *
             "`ENV[\"AWS_STACKNAME\"]` to run."
         )
     end

@@ -11,7 +11,6 @@ variables:
   STACKNAME_PREFIX: sandbox-awsbatch
   CLOUDSPY_IMAGE: 468665244580.dkr.ecr.us-east-1.amazonaws.com/cloudspy
   JULIA_IMAGE: 468665244580.dkr.ecr.us-east-1.amazonaws.com/julia-gitlab-ci:1.0
-  ONLINE: ""
 
 # Variables that require shell execution or depend on a variable that does
 .runtime_variables: &runtime_variables
@@ -165,7 +164,7 @@ variables:
   extends: .test_shell_nightly
 
 
-"Online Tests":
+.test_batch:
   stage: test
   tags:
     - amzn2
@@ -173,7 +172,7 @@ variables:
     - docker
     - ci-account
   variables:
-    ONLINE: "batch"  # Runs the online tests against AWS
+    TESTS: "batch"  # Runs the online tests against AWS
   script:
     - *runtime_variables
     - *awscli_install
@@ -183,7 +182,20 @@ variables:
     - source julia-ci export
     - AWS_STACKNAME=$STACKNAME ./julia-ci test
     - ./julia-ci coverage
-  extends: .test_shell_1_0
+  extends: .test_shell
+
+"1.0 (AWS Batch)":
+  variables:
+    JULIA_VERSION: "1.0"
+  extends: .test_batch
+
+"1.1 (AWS Batch)":
+  variables:
+    JULIA_VERSION: "1.1"
+  extends: .test_batch
+
+# Note: We cannot test AWS Batch on nightly as we don't build "julia-baked" images with
+# the nightly Julia revision.
 
 
 .delete: &delete
