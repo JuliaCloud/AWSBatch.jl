@@ -42,9 +42,18 @@ include("mock.jl")
             info(logger, "Running AWS Batch tests")
 
             @testset "Job Submission" begin
+                definition = "aws-batch-test"
+
+                # Append the job ID to the definition when running on the CI. Doing this
+                # will allow this test to successfully reuse the job definition later when
+                # concurrent CI jobs are running AWS Batch tests at the same time.
+                if haskey(ENV, "CI_JOB_ID")
+                    definition *= "-" * ENV["CI_JOB_ID"]
+                end
+
                 job = run_batch(;
                     name = "aws-batch-test",
-                    definition = "aws-batch-test",
+                    definition = definition,
                     queue = STACK["JobQueueArn"],
                     image = JULIA_BAKED_IMAGE,
                     vcpus = 1,
@@ -73,7 +82,7 @@ include("mock.jl")
 
                 job_definition_details = first(describe(job_definition)["jobDefinitions"])
 
-                @test job_definition_details["jobDefinitionName"] == "aws-batch-test"
+                @test job_definition_details["jobDefinitionName"] == definition
                 @test job_definition_details["status"] == "ACTIVE"
                 @test job_definition_details["type"] == "container"
 
@@ -91,7 +100,7 @@ include("mock.jl")
                 # Reuse job definition
                 job = run_batch(;
                     name = "aws-batch-test",
-                    definition = "aws-batch-test",
+                    definition = definition,
                     queue = STACK["JobQueueArn"],
                     image = JULIA_BAKED_IMAGE,
                     vcpus = 1,
