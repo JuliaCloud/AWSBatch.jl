@@ -9,9 +9,8 @@ include:
 
 variables:
   STACKNAME_PREFIX: sandbox-awsbatch
-  AMAZON_LINUX_IMAGE: amazonlinux:2
+  CLOUDSPY_IMAGE: 468665244580.dkr.ecr.us-east-1.amazonaws.com/cloudspy
   JULIA_IMAGE: 468665244580.dkr.ecr.us-east-1.amazonaws.com/julia-gitlab-ci:1.0
-  ONLINE: ""
 
 # Variables that require shell execution or depend on a variable that does
 .runtime_variables: &runtime_variables
@@ -27,6 +26,9 @@ variables:
   fi
   ACCOUNT_ID=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep -oP '(?<="accountId" : ")[^"]*(?=")')
   export AWS_DEFAULT_REGION=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep -oP '(?<="region" : ")[^"]*(?=")')
+
+  # Export temp credentials. Make sure this path is absolute as Julia can change directories during testing
+  export AWS_SHARED_CREDENTIALS_FILE="$(pwd)/tmp-creds"
 
 .awscli_install: &awscli_install
   |
@@ -60,8 +62,6 @@ variables:
   |
   # Install Cloudspy in the env
   pip install git+https://gitlab-ci-token:${CI_BUILD_TOKEN}@gitlab.invenia.ca/infrastructure/cloudspy.git#egg=cloudspy
-  # Export temp credentials. Make sure this path is absolute as Julia can change directories during testing
-  export AWS_SHARED_CREDENTIALS_FILE="$(pwd)/tmp-creds"
 
 .assume_test_profile: &assume_test_profile
   |
@@ -87,15 +87,12 @@ variables:
 
 "Create Stack":
   stage: setup
-  image: $AMAZON_LINUX_IMAGE
+  image: $CLOUDSPY_IMAGE
   tags:
     - docker-ci
     - ci-account
   before_script:
     - *runtime_variables
-    - yum -y update
-    - *awscli_install
-    - *cloudspy_install
   script:
     - aws cloudformation validate-template --template-body file://test/batch.yml
     - |
@@ -167,7 +164,7 @@ variables:
   extends: .test_shell_nightly
 
 
-"Online Tests":
+.test_batch:
   stage: test
   tags:
     - amzn2
@@ -175,7 +172,7 @@ variables:
     - docker
     - ci-account
   variables:
-    ONLINE: "batch"  # Runs the online tests against AWS
+    TESTS: "batch"  # Runs the online tests against AWS
   script:
     - *runtime_variables
     - *awscli_install
@@ -185,17 +182,29 @@ variables:
     - source julia-ci export
     - AWS_STACKNAME=$STACKNAME ./julia-ci test
     - ./julia-ci coverage
-  extends: .test_shell_1_0
+  extends: .test_shell
+
+"1.0 (AWS Batch)":
+  variables:
+    JULIA_VERSION: "1.0"
+  extends: .test_batch
+
+"1.1 (AWS Batch)":
+  variables:
+    JULIA_VERSION: "1.1"
+  extends: .test_batch
+
+# Note: We cannot test AWS Batch on nightly as we don't build "julia-baked" images with
+# the nightly Julia revision.
 
 
 .delete: &delete
   tags:
     - docker-ci
     - ci-account
-  image: $AMAZON_LINUX_IMAGE
+  image: $CLOUDSPY_IMAGE
   before_script:
     - *runtime_variables
-    - *awscli_install
   script:
     - eval $(aws-stack-outputs $STACKNAME)
     - |

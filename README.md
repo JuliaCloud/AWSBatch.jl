@@ -6,14 +6,12 @@
 
 # Running the tests
 
-To run the ONLINE batch tests you must first set the environmental variables `ONLINE` and
+To run the online AWS Batch tests you must first set the environmental variables `TESTS` and
 `AWS_STACKNAME`.
 
 ```julia
-ENV["ONLINE"] = "batch"
-
+ENV["TESTS"] = "batch"
 ENV["AWS_STACKNAME"] = "aws-batch-manager-test"
 ```
 
-To make an `aws-batch-manager-test` compatible stack you can use the AWSClusterManagers.jl
-CloudFormation template [test/batch.yml](https://gitlab.invenia.ca/invenia/AWSClusterManagers.jl/blob/master/test/batch.yml).
+To make an `aws-batch-manager-test` compatible stack you can use the CloudFormation template [test/batch.yml](./test/batch.yml).
