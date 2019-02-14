@@ -10,7 +10,6 @@ include:
 variables:
   STACKNAME_PREFIX: sandbox-awsbatch
   CLOUDSPY_IMAGE: 468665244580.dkr.ecr.us-east-1.amazonaws.com/cloudspy
-  JULIA_IMAGE: 468665244580.dkr.ecr.us-east-1.amazonaws.com/julia-gitlab-ci:1.0
 
 # Variables that require shell execution or depend on a variable that does
 .runtime_variables: &runtime_variables
@@ -113,8 +112,8 @@ variables:
   tags:
     - linux
     - 64-bit
-    - shell-ci
-  extends: .test_shell_1_0
+    - docker-ci
+  extends: .test_docker_1_0
 
 "1.0 (Linux, 32-bit)":
   tags:
@@ -133,8 +132,8 @@ variables:
   tags:
     - linux
     - 64-bit
-    - shell-ci
-  extends: .test_shell_1_1
+    - docker-ci
+  extends: .test_docker_1_1
 
 "1.1 (Linux, 32-bit)":
   tags:
@@ -153,8 +152,8 @@ variables:
   tags:
     - linux
     - 64-bit
-    - shell-ci
-  extends: .test_shell_nightly
+    - docker-ci
+  extends: .test_docker_nightly
 
 "Nightly (Linux, 32-bit)":
   tags:
@@ -168,8 +167,7 @@ variables:
   stage: test
   tags:
     - amzn2
-    - ecr
-    - docker
+    - docker-build
     - ci-account
   variables:
     TESTS: "batch"  # Runs the online tests against AWS
