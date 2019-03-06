@@ -60,7 +60,7 @@ end
         definition::Union{AbstractString, JobDefinition, Nothing}=nothing,
         image::AbstractString="",
         vcpus::Integer=1,
-        memory::Integer=1024,
+        memory::Integer=-1,
         role::AbstractString="",
         cmd::Cmd=``,
         num_jobs::Integer=1,
@@ -87,7 +87,7 @@ function run_batch(;
     definition::Union{AbstractString, JobDefinition, Nothing}=nothing,
     image::AbstractString="",
     vcpus::Integer=1,
-    memory::Integer=1024,
+    memory::Integer=-1,
     role::AbstractString="",
     cmd::Cmd=``,
     num_jobs::Integer=1,
@@ -110,7 +110,7 @@ function run_batch(;
 
             # Update container override parameters
             vcpus == 1 && (vcpus = container["vcpus"])
-            (memory == 1024  || memory < 1) && (memory = container["memory"])
+            memory < 0 && (memory = container["memory"])
             isempty(cmd) && (cmd = Cmd(Vector{String}(container["command"])))
         end
     end
@@ -152,7 +152,7 @@ function run_batch(;
 
             # Update container overrides
             vcpus == 1 && (vcpus = container["vcpus"])
-            (memory == 1024  || memory < 1) && (memory = container["memory"])
+            memory < 0 && (memory = container["memory"])
             isempty(cmd) && (cmd = Cmd(Vector{String}(container["command"])))
         else
             warn(logger, "No jobs found with id: $job_id.")
@@ -160,7 +160,7 @@ function run_batch(;
     end
 
     # Error if required parameters were not explicitly set and cannot be inferred
-    if isempty(name) || isempty(queue) || memory < 1
+    if isempty(name) || isempty(queue) || memory < 0
         throw(BatchEnvironmentError(
             "Unable to perform AWS Batch introspection when not running within " *
             "an AWS Batch job. Current job parameters are: " *
