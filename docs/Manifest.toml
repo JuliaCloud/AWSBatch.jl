@@ -1,8 +1,8 @@
 [[AWSBatch]]
-deps = ["AWSCore", "AWSSDK", "AutoHashEquals", "Dates", "Memento", "Mocking", "OrderedCollections", "Test"]
-git-tree-sha1 = "46b75dea75b19d0025cfed7ff859a906bede2eb6"
+deps = ["AWSCore", "AWSSDK", "AutoHashEquals", "Dates", "Memento", "Mocking", "OrderedCollections"]
+path = ".."
 uuid = "dcae83d4-2881-5875-9d49-e5534165e9c0"
-version = "1.0.0"
+version = "1.0.0+"
 
 [[AWSCore]]
 deps = ["Base64", "DataStructures", "Dates", "HTTP", "IniFile", "JSON", "LazyJSON", "MbedTLS", "Retry", "Sockets", "SymDict", "Test", "XMLDict"]

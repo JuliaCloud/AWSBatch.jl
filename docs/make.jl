@@ -3,7 +3,7 @@ using Documenter, AWSBatch
 makedocs(;
     modules=[AWSBatch],
     format=Documenter.HTML(
-        prettyurls=false,
+        prettyurls=get(ENV, "CI", nothing) == "true",
         assets=[
             "assets/invenia.css",
             "assets/logo.png",
