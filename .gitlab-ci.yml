@@ -35,20 +35,13 @@ variables:
   NEED_SUDO="sudo"
 
   # docker-ci has slightly different install parameters
-  if [[ ${CI_RUNNER_TAGS} == *"docker-ci"* ]]; then
-    # Install which command
-    yum -y install which
-    # Install epel to get python36 rather than python3
-    amazon-linux-extras install epel
-    # We don't need to use sudo on the docker-ci tagged instances
-    NEED_SUDO=""
-  fi
+  [[ $CI_DISPOSABLE_ENVIRONMENT == "true" ]] && SUDO="" || SUDO="sudo"
 
-  # Install python36, virtualenv, and necessary packages
-  ${NEED_SUDO} yum -y install python36 python36-devel python-virtualenv gcc git
+  # Install python3 and necessary packages
+  ${SUDO} yum -y install python3 python3-devel gcc git
 
   # Install a virtualenv with python 3 and activate it
-  virtualenv --python=$(which python36) venv
+  python3 -m venv venv
   source venv/bin/activate
 
   # Install AWSCli
