@@ -222,7 +222,7 @@ Resources:
     Properties:
       Handler: index.lambda_handler
       Runtime: python3.6
-      Timeout: 5
+      Timeout: 60
       Role: !GetAtt DeleteStackRole.Arn
       Environment:
         Variables:
