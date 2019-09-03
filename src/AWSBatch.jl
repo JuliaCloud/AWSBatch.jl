@@ -1,4 +1,3 @@
-__precompile__()
 module AWSBatch
 
 using AutoHashEquals

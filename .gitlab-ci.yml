@@ -1,68 +1,18 @@
-stages:
-  - setup
-  - test
-  - teardown
-
+---
 include:
-  - https://gitlab.invenia.ca/infrastructure/gitlab-ci-helper/raw/master/templates/hidden-jobs.yml
-  - https://gitlab.invenia.ca/infrastructure/gitlab-ci-helper/raw/master/templates/teardown.yml
-
+  - project: infrastructure/gitlab-ci-helper
+    file: /templates/julia.yml
+     
 variables:
-  STACKNAME_PREFIX: sandbox-awsbatch
+  STACK_NAME_PREFIX: sandbox-awsbatch
   CLOUDSPY_IMAGE: 468665244580.dkr.ecr.us-east-1.amazonaws.com/cloudspy
 
 # Variables that require shell execution or depend on a variable that does
-.runtime_variables: &runtime_variables
+.setup: &setup
   |
-  # Declare runtime variables
-  #
-  # Make unique stacks for each executed pipeline for `master`. This will allow fast successive merges
-  # to work correctly.
-  if [[ ${CI_COMMIT_REF_SLUG} == "master" ]]; then
-      STACKNAME="${STACKNAME_PREFIX}-master-${CI_PIPELINE_ID}"
-  else
-      STACKNAME="${STACKNAME_PREFIX}-${CI_COMMIT_REF_SLUG/\//}"  # Replace an forward slashes with a hyphen
-  fi
-  ACCOUNT_ID=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep -oP '(?<="accountId" : ")[^"]*(?=")')
-  export AWS_DEFAULT_REGION=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep -oP '(?<="region" : ")[^"]*(?=")')
-
-  # Export temp credentials. Make sure this path is absolute as Julia can change directories during testing
-  export AWS_SHARED_CREDENTIALS_FILE="$(pwd)/tmp-creds"
-
-.awscli_install: &awscli_install
-  |
-  # Build cloudspy and its dependencies
-  NEED_SUDO="sudo"
-
-  # docker-ci has slightly different install parameters
-  [[ $CI_DISPOSABLE_ENVIRONMENT == "true" ]] && SUDO="" || SUDO="sudo"
-
-  # Install python3 and necessary packages
-  ${SUDO} yum -y install python3 python3-devel gcc git
-
-  # Install a virtualenv with python 3 and activate it
-  python3 -m venv venv
-  source venv/bin/activate
-
-  # Install AWSCli
-  pip install --upgrade awscli
-
-  # Print aws version
-  aws --version
-
-.cloudspy_install: &cloudspy_install
-  |
-  # Install Cloudspy in the env
-  pip install git+https://gitlab-ci-token:${CI_BUILD_TOKEN}@gitlab.invenia.ca/infrastructure/cloudspy.git#egg=cloudspy
-
-.assume_test_profile: &assume_test_profile
-  |
-  aws-credentials \
-    --credentials-file=$AWS_SHARED_CREDENTIALS_FILE \
-    --role-arn arn:aws:iam::${ACCOUNT_ID}:role/${STACKNAME}-TestRole \
-    --role-session-name test
-  export AWS_PROFILE=test
-
+  echo "$common_functions" > common && source common
+  STACK_NAME=$(stack_name $STACK_NAME_PREFIX)
+  ACCOUNT_ID=$(aws_account_id)
 
 "Setup Environment":
   stage: setup
@@ -84,77 +34,16 @@ variables:
     - docker-ci
     - ci-account
   before_script:
-    - *runtime_variables
+    - *setup
   script:
     - aws cloudformation validate-template --template-body file://test/batch.yml
     - |
       aws-create-stack \
         --role-arn arn:aws:iam::${ACCOUNT_ID}:role/CloudFormationAdmin \
-        --stackname $STACKNAME \
+        --stackname $STACK_NAME \
         --template-body ./test/batch.yml \
         --wait \
         --params CIRoleArn=arn:aws:iam::${ACCOUNT_ID}:role/GitLabCIRunnerRole
-
-"1.0 (Mac)":
-  tags:
-    - mac
-    - shell-ci
-  extends: .test_shell_1_0
-
-"1.0 (Linux, 64-bit)":
-  tags:
-    - linux
-    - 64-bit
-    - docker-ci
-  extends: .test_docker_1_0
-
-"1.0 (Linux, 32-bit)":
-  tags:
-    - linux
-    - 32-bit
-    - shell-ci
-  extends: .test_shell_1_0
-
-"1.1 (Mac)":
-  tags:
-    - mac
-    - shell-ci
-  extends: .test_shell_1_1
-
-"1.1 (Linux, 64-bit)":
-  tags:
-    - linux
-    - 64-bit
-    - docker-ci
-  extends: .test_docker_1_1
-
-"1.1 (Linux, 32-bit)":
-  tags:
-    - linux
-    - 32-bit
-    - shell-ci
-  extends: .test_shell_1_1
-
-"Nightly (Mac)":
-  tags:
-    - mac
-    - shell-ci
-  extends: .test_shell_nightly
-
-"Nightly (Linux, 64-bit)":
-  tags:
-    - linux
-    - 64-bit
-    - docker-ci
-  extends: .test_docker_nightly
-
-"Nightly (Linux, 32-bit)":
-  tags:
-    - linux
-    - 32-bit
-    - shell-ci
-  extends: .test_shell_nightly
-
 
 .test_batch:
   stage: test
@@ -165,13 +54,11 @@ variables:
   variables:
     TESTS: "batch"  # Runs the online tests against AWS
   script:
-    - *runtime_variables
-    - *awscli_install
-    - *cloudspy_install
-    - *assume_test_profile
+    - *setup
+    - assume_test_role
     # Execute online tests
     - source julia-ci export
-    - AWS_STACKNAME=$STACKNAME ./julia-ci test
+    - AWS_STACKNAME=$STACK_NAME ./julia-ci test
     - ./julia-ci coverage
   extends: .test_shell
 
@@ -185,9 +72,15 @@ variables:
     JULIA_VERSION: "1.1"
   extends: .test_batch
 
-# Note: We cannot test AWS Batch on nightly as we don't build "julia-baked" images with
-# the nightly Julia revision.
+"1.2 (AWS Batch)":
+  variables:
+    JULIA_VERSION: "1.2"
+  extends: .test_batch
 
+"Nightly (AWS Batch)":
+  variables:
+    JULIA_VERSION: "nightly"
+  extends: .test_batch
 
 .delete: &delete
   tags:
@@ -195,14 +88,14 @@ variables:
     - ci-account
   image: $CLOUDSPY_IMAGE
   before_script:
-    - *runtime_variables
+    - *setup
   script:
-    - eval $(aws-stack-outputs $STACKNAME)
+    - eval $(aws-stack-outputs $STACK_NAME)
     - |
       aws cloudformation delete-stack \
         --role-arn arn:aws:iam::${ACCOUNT_ID}:role/CloudFormationAdmin \
-        --stack-name $STACKNAME
-    - aws cloudformation wait stack-delete-complete --stack-name $STACKNAME
+        --stack-name $STACK_NAME
+    - aws cloudformation wait stack-delete-complete --stack-name $STACK_NAME
 
 "Delete Environment":
   stage: teardown
