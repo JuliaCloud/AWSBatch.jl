@@ -16,15 +16,30 @@ const TESTS = strip.(split(get(ENV, "TESTS", "local"), r"\s*,\s*"))
 # found in AWSClusterMangers.jl
 const AWS_STACKNAME = get(ENV, "AWS_STACKNAME", "")
 const STACK = !isempty(AWS_STACKNAME) ? stack_output(AWS_STACKNAME) : Dict()
-const JULIA_BAKED_IMAGE = "468665244580.dkr.ecr.us-east-1.amazonaws.com/julia-baked:$VERSION"
 const JOB_TIMEOUT = 900
+
+const JULIA_BAKED_IMAGE = let
+    julia_tags = split(
+        replace(
+            read(
+                `git ls-remote --tags https://github.com/JuliaLang/julia`, 
+                String
+            ), 
+            r".*\/" => ""
+        )
+    )
+    version_numbers = VersionNumber.(filter(v -> !endswith(v, "^{}"), julia_tags))
+    latest_version = maximum(version_numbers)
+    is_nightly = VERSION > latest_version
+
+    "468665244580.dkr.ecr.us-east-1.amazonaws.com/julia-baked:" * (is_nightly ? "nightly" : "$VERSION")
+end
 
 Memento.config!("debug"; fmt="[{level} | {name}]: {msg}")
 const logger = getlogger(AWSBatch)
 setlevel!(logger, "info")
 
 include("mock.jl")
-
 
 @testset "AWSBatch.jl" begin
     if "local" in TESTS
