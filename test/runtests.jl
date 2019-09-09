@@ -1,7 +1,9 @@
 using Mocking
-Mocking.enable(force=true)
+Mocking.enable(; force=true)
 
 using AWSBatch
+using AWSBatch: describe_compute_environments, describe_jobs, describe_job_definitions,
+    describe_job_queues, register_job_definition, submit_job
 using AWSCore: AWSConfig
 using AWSTools.CloudFormation: stack_output
 using Dates

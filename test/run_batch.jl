@@ -1,9 +1,9 @@
-function register_job_def(config::AWSConfig, input::AbstractArray, expected::AbstractArray)
+function _register_job_def(config::AWSConfig, input::AbstractArray, expected::AbstractArray)
     @test input == expected
     return REGISTER_JOB_DEF_RESP
 end
 
-function submit_job(config::AWSConfig, input::AbstractArray, expected::AbstractArray)
+function _submit_job(config::AWSConfig, input::AbstractArray, expected::AbstractArray)
     @test input == expected
     return SUBMIT_JOB_RESP
 end
@@ -32,7 +32,7 @@ end
 
         patches = [
             @patch describe_job_definitions(args...) = DESCRIBE_JOBS_DEF_RESP
-            @patch submit_job(config, input) = submit_job(config, input, expected_job)
+            @patch submit_job(config, input) = _submit_job(config, input, expected_job)
         ]
 
         apply(patches) do
@@ -72,12 +72,9 @@ end
                 @patch read(cmd::AbstractCmd, ::Type{String}) = mock_read(cmd, String)
                 @patch describe_jobs(args...) = DESCRIBE_JOBS_RESP
                 @patch describe_job_definitions(args...) = Dict("jobDefinitions" => Dict())
-                @patch register_job_definition(config, input) = register_job_def(
-                    config,
-                    input,
-                    expected_job_def,
-                )
-                @patch submit_job(config, input) = submit_job(config, input, expected_job)
+                @patch register_job_definition(config, input) =
+                    _register_job_def(config, input, expected_job_def)
+                @patch submit_job(config, input) = _submit_job(config, input, expected_job)
             ]
 
             apply(patches) do
@@ -105,7 +102,7 @@ end
                 @patch read(cmd::AbstractCmd, ::Type{String}) = mock_read(cmd, String)
                 @patch describe_jobs(args...) = DESCRIBE_JOBS_RESP
                 @patch describe_job_definitions(args...) = Dict("jobDefinitions" => Dict())
-                @patch submit_job(config, input) = submit_job(config, input, expected_job)
+                @patch submit_job(config, input) = _submit_job(config, input, expected_job)
             ]
 
             apply(patches) do
