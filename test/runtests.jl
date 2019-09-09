@@ -1,15 +1,13 @@
-using Mocking
-Mocking.enable(; force=true)
-
 using AWSBatch
-using AWSBatch: describe_compute_environments, describe_jobs, describe_job_definitions,
-    describe_job_queues, register_job_definition, submit_job
+using AWSBatch: describe_jobs, describe_job_definitions, register_job_definition, submit_job
 using AWSCore: AWSConfig
 using AWSTools.CloudFormation: stack_output
 using Dates
 using Memento
+using Mocking
 using Test
 
+Mocking.activate()
 
 # Controls the running of various tests: "local", "batch"
 const TESTS = strip.(split(get(ENV, "TESTS", "local"), r"\s*,\s*"))
