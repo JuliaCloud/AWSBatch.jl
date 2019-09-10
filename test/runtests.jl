@@ -1,7 +1,9 @@
 using Mocking
-Mocking.enable(force=true)
+Mocking.enable(; force=true)
 
 using AWSBatch
+using AWSBatch: describe_compute_environments, describe_jobs, describe_job_definitions,
+    describe_job_queues, register_job_definition, submit_job
 using AWSCore: AWSConfig
 using AWSTools.CloudFormation: stack_output
 using Dates
@@ -19,20 +21,13 @@ const STACK = !isempty(AWS_STACKNAME) ? stack_output(AWS_STACKNAME) : Dict()
 const JOB_TIMEOUT = 900
 
 const JULIA_BAKED_IMAGE = let
-    julia_tags = split(
-        replace(
-            read(
-                `git ls-remote --tags https://github.com/JuliaLang/julia`, 
-                String
-            ), 
-            r".*\/" => ""
-        )
-    )
-    version_numbers = VersionNumber.(filter(v -> !endswith(v, "^{}"), julia_tags))
-    latest_version = maximum(version_numbers)
-    is_nightly = VERSION > latest_version
+    output = read(`git ls-remote --tags https://github.com/JuliaLang/julia`, String)
+    tags = split(replace(output, r".*\/" => ""))
+    versions = VersionNumber.(filter(v -> !endswith(v, "^{}"), tags))
+    latest_version = maximum(versions)
+    docker_tag = VERSION > latest_version ? "nightly" : "$VERSION"
 
-    "468665244580.dkr.ecr.us-east-1.amazonaws.com/julia-baked:" * (is_nightly ? "nightly" : "$VERSION")
+    "468665244580.dkr.ecr.us-east-1.amazonaws.com/julia-baked:$docker_tag"
 end
 
 Memento.config!("debug"; fmt="[{level} | {name}]: {msg}")
