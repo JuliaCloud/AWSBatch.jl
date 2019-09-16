@@ -1,7 +1,7 @@
 name = "AWSBatch"
 uuid = "dcae83d4-2881-5875-9d49-e5534165e9c0"
 authors = ["Invenia Technical Computing"]
-version = "1.1.0"
+version = "1.2.0"
 
 [deps]
 AWSCore = "4f1ea46c-232b-54a6-9b17-cc2d0f3e6598"
