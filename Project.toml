@@ -1,7 +1,7 @@
 name = "AWSBatch"
 uuid = "dcae83d4-2881-5875-9d49-e5534165e9c0"
 authors = ["Invenia Technical Computing"]
-version = "1.1.0"
+version = "1.2.0"
 
 [deps]
 AWSCore = "4f1ea46c-232b-54a6-9b17-cc2d0f3e6598"
@@ -18,7 +18,7 @@ AWSSDK = "0.2, 0.3, 0.4"
 AWSTools = "0.3.1, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1"
 AutoHashEquals = "0.2.0"
 Memento = "0.7, 0.8, 0.9, 0.10, 0.11, 0.12"
-Mocking = "0.3.3, 0.4, 0.5, 0.6, 0.7"
+Mocking = "0.7"
 julia = "1"
 
 [extras]

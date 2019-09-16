@@ -115,7 +115,7 @@ end
 
 
 function describe_compute_environments_patch(output::Vector=[])
-    @patch function describe_compute_environments(d::Dict)
+    @patch function AWSBatch.describe_compute_environments(d::Dict)
         compute_envs = d["computeEnvironments"]
         @assert length(compute_envs) == 1
         ce = first(compute_envs)
@@ -131,7 +131,7 @@ function describe_compute_environments_patch(output::OrderedDict)
 end
 
 function describe_job_queues_patch(output::Vector=[])
-    @patch function describe_job_queues(d::Dict)
+    @patch function AWSBatch.describe_job_queues(d::Dict)
         queues = d["jobQueues"]
         @assert length(queues) == 1
         queue = first(queues)
