@@ -96,24 +96,6 @@ const DESCRIBE_JOBS_RESP = Dict(
     ]
 )
 
-
-"""
-    Mock.read(cmd::CmdRedirect, ::Type{String})
-
-Mocks the CmdRedirect produced from
-``pipeline(`curl http://169.254.169.254/latest/meta-data/placement/availability-zone`)``
-to just return "us-east-1a".
-"""
-function mock_read(cmd::CmdRedirect, ::Type{String})
-    cmd_exec = cmd.cmd.exec
-    result = if cmd_exec[1] == "curl" && occursin("availability-zone", cmd_exec[2])
-        return "us-east-1a"
-    else
-        return Base.read(cmd, String)
-    end
-end
-
-
 function describe_compute_environments_patch(output::Vector=[])
     @patch function AWSBatch.describe_compute_environments(d::Dict)
         compute_envs = d["computeEnvironments"]
