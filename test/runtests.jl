@@ -2,6 +2,7 @@ using AWSBatch
 using AWSBatch: describe_jobs, describe_job_definitions, register_job_definition, submit_job
 using AWSCore: AWSConfig
 using AWSTools.CloudFormation: stack_output
+using AWSTools.EC2: instance_region
 using Dates
 using Memento
 using Mocking

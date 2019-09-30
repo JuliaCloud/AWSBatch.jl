@@ -69,7 +69,7 @@ end
             ]
 
             patches = [
-                @patch read(cmd::AbstractCmd, ::Type{String}) = mock_read(cmd, String)
+                @patch instance_region() = "us-east-1"
                 @patch describe_jobs(args...) = DESCRIBE_JOBS_RESP
                 @patch describe_job_definitions(args...) = Dict("jobDefinitions" => Dict())
                 @patch register_job_definition(config, input) =
@@ -99,7 +99,7 @@ end
             ]
 
             patches = [
-                @patch read(cmd::AbstractCmd, ::Type{String}) = mock_read(cmd, String)
+                @patch instance_region() = "us-east-1"
                 @patch describe_jobs(args...) = DESCRIBE_JOBS_RESP
                 @patch describe_job_definitions(args...) = Dict("jobDefinitions" => Dict())
                 @patch submit_job(config, input) = _submit_job(config, input, expected_job)

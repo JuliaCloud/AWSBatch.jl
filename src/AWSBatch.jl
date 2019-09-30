@@ -4,6 +4,7 @@ using AutoHashEquals
 using AWSCore: aws_config
 using AWSSDK.Batch
 using AWSSDK.CloudWatchLogs
+using AWSTools.EC2: instance_region
 using OrderedCollections: OrderedDict
 using Dates
 using Memento
@@ -122,14 +123,7 @@ function run_batch(;
         job_queue = ENV["AWS_BATCH_JQ_NAME"]
 
         # Get the zone information from the EC2 instance metadata.
-        zone = @mock read(
-            pipeline(
-                `curl http://169.254.169.254/latest/meta-data/placement/availability-zone`;
-                stderr=devnull
-            ),
-            String
-        )
-        isempty(region) && (region = chop(zone))
+        isempty(region) && (region = @mock instance_region())
 
         # Requires permissions to access to "batch:DescribeJobs"
         response = @mock describe_jobs(Dict("jobs" => [job_id]))
