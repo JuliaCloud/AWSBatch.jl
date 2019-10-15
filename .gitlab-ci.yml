@@ -2,7 +2,7 @@
 include:
   - project: infrastructure/gitlab-ci-helper
     file: /templates/julia.yml
-     
+
 variables:
   STACK_NAME_PREFIX: sandbox-awsbatch
   CLOUDSPY_IMAGE: 468665244580.dkr.ecr.us-east-1.amazonaws.com/cloudspy
@@ -80,6 +80,7 @@ variables:
 "Nightly (AWS Batch)":
   variables:
     JULIA_VERSION: "nightly"
+  allow_failure: true
   extends: .test_batch
 
 .delete: &delete
