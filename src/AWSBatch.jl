@@ -34,6 +34,7 @@ const logger = getlogger(@__MODULE__)
 __init__() = Memento.register(logger)
 
 
+include("version.jl")
 include("log_event.jl")
 include("compute_environment.jl")
 include("job_queue.jl")
