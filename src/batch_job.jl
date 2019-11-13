@@ -204,9 +204,10 @@ function Base.wait(
 end
 
 """
-    log_events(job::BatchJob) -> Vector{LogEvent}
+    log_events(job::BatchJob, Nothing) -> Union{Vector{LogEvent}, Nothing}
 
-Fetches the logStreamName, fetches the CloudWatch logs and returns a vector of messages.
+Fetches the logStreamName, fetches the CloudWatch logs and returns a vector of log events.
+If the log stream does not currently exist then `nothing` is returned.
 
 NOTES:
 - The `logStreamName` isn't available until the job is RUNNING, so you may want to use
@@ -214,17 +215,45 @@ NOTES:
 - We do not support pagination, so this function is limited to 10,000 log messages by
   default.
 """
-function log_events(job::BatchJob)
+function log_events(
+    job::BatchJob,
+    stream_missing_return_type::Union{Type{Vector{LogEvent}},Type{Nothing}}=Vector{LogEvent},
+)
+    if stream_missing_return_type !== Nothing
+        Base.depwarn(
+            "Non-existent log streams will return `nothing` instead of `LogEvent[]` " *
+            "in the future. Use `log_events(job, Nothing)` to adopt the new behaviour.",
+            :log_events,
+        )
+    end
+
     job_details = describe(job)
 
-    if "logStreamName" in keys(job_details["container"])
+    if haskey(job_details["container"], "logStreamName")
         stream = job_details["container"]["logStreamName"]
-
-        info(logger, "Fetching log events from $stream")
-        output = get_log_events(logGroupName="/aws/batch/job", logStreamName=stream)
-        return convert.(LogEvent, output["events"])
     else
-        info(logger, "No log events found for job $(job.id)")
-        return LogEvent[]
+        return stream_missing_return_type()
     end
+
+    info(logger, "Fetching log events from $stream")
+    output = try
+        @mock get_log_events(logGroupName="/aws/batch/job", logStreamName=stream)
+    catch e
+        # The batch job has a reference to a log stream but the stream has not yet been
+        # created.
+        if (
+            e isa AWSException &&
+            e.cause.status == 400 &&
+            e.info["message"] == "The specified log stream does not exist."
+        )
+            return stream_missing_return_type()
+        end
+
+        rethrow()
+    end
+
+    return convert.(LogEvent, output["events"])
 end
+
+# TODO: Once we default to returning `nothing`
+# @deprecate log_events(job::BatchJob, ::Union{Type{Vector{LogEvent}},Type{Nothing}}) log_events(job)

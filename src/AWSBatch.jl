@@ -1,7 +1,7 @@
 module AWSBatch
 
 using AutoHashEquals
-using AWSCore: aws_config
+using AWSCore: AWSException, aws_config
 using AWSSDK.Batch
 using AWSSDK.CloudWatchLogs
 using AWSTools.EC2: instance_region

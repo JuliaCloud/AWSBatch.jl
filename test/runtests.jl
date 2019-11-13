@@ -1,9 +1,11 @@
 using AWSBatch
 using AWSBatch: describe_jobs, describe_job_definitions, register_job_definition, submit_job
-using AWSCore: AWSConfig
+using AWSCore: AWSConfig, AWSException
+using AWSSDK.CloudWatchLogs: get_log_events
 using AWSTools.CloudFormation: stack_output
 using AWSTools.EC2: instance_region
 using Dates
+using HTTP: HTTP
 using Memento
 using Mocking
 using Test
@@ -41,6 +43,7 @@ include("mock.jl")
         include("job_queue.jl")
         include("log_event.jl")
         include("job_state.jl")
+        include("batch_job.jl")
         include("run_batch.jl")
     else
         warn(logger, "Skipping \"local\" tests. Set `ENV[\"TESTS\"] = \"local\"` to run.")
