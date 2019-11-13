@@ -1,5 +1,6 @@
 using AWSBatch
-using AWSBatch: describe_jobs, describe_job_definitions, register_job_definition, submit_job
+using AWSBatch: LogEvent, describe_jobs, describe_job_definitions, register_job_definition,
+    submit_job
 using AWSCore: AWSConfig, AWSException
 using AWSSDK.CloudWatchLogs: get_log_events
 using AWSTools.CloudFormation: stack_output

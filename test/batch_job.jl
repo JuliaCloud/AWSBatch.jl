@@ -2,18 +2,16 @@
     job = BatchJob("00000000-0000-0000-0000-000000000000")
 
     @testset "log_events" begin
-        @testset "Log stream not yet created" begin
+        @testset "Stream not yet created" begin
             # When a AWS Batch job is first submitted the description of the job will not
             # contain a reference to a log stream
-            patch = @patch describe_jobs(args...; kwargs...) = Dict(
-                "jobs" => [Dict("container" => Dict())]
-            )
-            apply(patch) do
+            patches = log_events_patches(log_stream_name=nothing)
+            apply(patches) do
                 @test log_events(job, Nothing) === nothing
             end
         end
 
-        @testset "Log stream does not exist" begin
+        @testset "Stream DNE" begin
             # The AWS Batch job references a log stream but the stream has not yet been
             # created.
             dne_exception = AWSException(
@@ -29,14 +27,39 @@
                 )
             )
 
-            patches = [
-                @patch describe_jobs(args...; kwargs...) = Dict(
-                    "jobs" => [Dict("container" => Dict("logStreamName" => ""))]
-                )
-                @patch get_log_events(; kwargs...) = throw(dne_exception)
-            ]
+            patches = log_events_patches(events=() -> throw(dne_exception))
             apply(patches) do
                 @test log_events(job, Nothing) === nothing  # TODO: Suppress "Fetching log events from"
+            end
+        end
+
+        @testset "Stream with no events" begin
+            patches = log_events_patches(events=[])
+            apply(patches) do
+                @test log_events(job, Nothing) == LogEvent[]
+            end
+        end
+
+        @testset "Stream with events" begin
+            events = [
+                Dict(
+                    "eventId" => "0" ^ 56,
+                    "ingestionTime" => 1573672813145,
+                    "timestamp" => 1573672813145,
+                    "message" => "hello world!",
+                )
+            ]
+            patches = log_events_patches(events=events)
+
+            apply(patches) do
+                @test log_events(job, Nothing) == [
+                    LogEvent(
+                        "0" ^ 56,
+                        DateTime(2019, 11, 13, 19, 20, 13, 145),
+                        DateTime(2019, 11, 13, 19, 20, 13, 145),
+                        "hello world!",
+                    )
+                ]
             end
         end
     end
