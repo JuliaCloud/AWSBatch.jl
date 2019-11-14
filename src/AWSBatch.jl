@@ -1,7 +1,7 @@
 module AWSBatch
 
 using AutoHashEquals
-using AWSCore: aws_config
+using AWSCore: AWSException, aws_config
 using AWSSDK.Batch
 using AWSSDK.CloudWatchLogs
 using AWSTools.EC2: instance_region
@@ -34,6 +34,7 @@ const logger = getlogger(@__MODULE__)
 __init__() = Memento.register(logger)
 
 
+include("version.jl")
 include("log_event.jl")
 include("compute_environment.jl")
 include("job_queue.jl")

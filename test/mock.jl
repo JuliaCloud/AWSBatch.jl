@@ -127,3 +127,22 @@ end
 function describe_job_queues_patch(output::OrderedDict)
     describe_job_queues_patch([output])
 end
+
+function log_events_patches(; log_stream_name="mock_stream", events=[])
+    job_descriptions = if log_stream_name === nothing
+        Dict("jobs" => [Dict("container" => Dict())])
+    else
+        Dict("jobs" => [Dict("container" => Dict("logStreamName" => log_stream_name))])
+    end
+
+    log_events_function = if events isa AbstractVector
+        () -> Dict("events" => events)
+    else
+        events
+    end
+
+    return [
+        @patch describe_jobs(args...; kwargs...) = job_descriptions
+        @patch get_log_events(; kwargs...) = log_events_function()
+    ]
+end
