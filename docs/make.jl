@@ -6,7 +6,6 @@ makedocs(;
         prettyurls=get(ENV, "CI", nothing) == "true",
         assets=[
             "assets/invenia.css",
-            "assets/logo.png",
         ],
     ),
     pages=[
