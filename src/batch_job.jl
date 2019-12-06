@@ -214,8 +214,6 @@ if @__VERSION__() < v"1.4"
     NOTES:
     - The `logStreamName` isn't available until the job is RUNNING, so you may want to use
       `wait(job)` or `wait(job, [AWSBatch.SUCCEEDED])` prior to calling this function.
-    - We do not support pagination, so this function is limited to 10,000 log messages by
-      default.
     """
     function log_events(
         job::BatchJob,
@@ -238,23 +236,9 @@ if @__VERSION__() < v"1.4"
         end
 
         info(logger, "Fetching log events from $stream")
-        output = try
-            @mock get_log_events(logGroupName="/aws/batch/job", logStreamName=stream)
-        catch e
-            # The batch job has a reference to a log stream but the stream has not yet been
-            # created.
-            if (
-                e isa AWSException &&
-                e.cause.status == 400 &&
-                e.info["message"] == "The specified log stream does not exist."
-            )
-                return stream_missing_return_type()
-            end
+        events = log_events("/aws/batch/job", stream)
 
-            rethrow()
-        end
-
-        return convert.(LogEvent, output["events"])
+        return events !== nothing ? events : stream_missing_return_type()
     end
 
 else
@@ -267,8 +251,6 @@ else
     NOTES:
     - The `logStreamName` isn't available until the job is RUNNING, so you may want to use
       `wait(job)` or `wait(job, [AWSBatch.SUCCEEDED])` prior to calling this function.
-    - We do not support pagination, so this function is limited to 10,000 log messages by
-      default.
     """
     function log_events(job::BatchJob)
         job_details = describe(job)
@@ -280,23 +262,7 @@ else
         end
 
         info(logger, "Fetching log events from $stream")
-        output = try
-            @mock get_log_events(logGroupName="/aws/batch/job", logStreamName=stream)
-        catch e
-            # The batch job has a reference to a log stream but the stream has not yet been
-            # created.
-            if (
-                e isa AWSException &&
-                e.cause.status == 400 &&
-                e.info["message"] == "The specified log stream does not exist."
-            )
-                return nothing
-            end
-
-            rethrow()
-        end
-
-        return convert.(LogEvent, output["events"])
+        return log_events("/aws/batch/job", stream)
     end
 end
 
