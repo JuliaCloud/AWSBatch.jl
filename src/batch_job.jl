@@ -112,6 +112,17 @@ function status(job::BatchJob)::JobState
 end
 
 """
+    status_reason(job::BatchJob) -> Union{String, Nothing}
+
+A short, human-readable string to provide additional details about the current status of the
+job.
+"""
+function status_reason(job::BatchJob)
+    details = describe(job)
+    return get(details, "statusReason", nothing)
+end
+
+"""
     wait(
         cond::Function,
         job::BatchJob;
