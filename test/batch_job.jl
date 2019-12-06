@@ -7,7 +7,7 @@
             # contain a reference to a log stream
             patches = log_events_patches(log_stream_name=nothing)
             apply(patches) do
-                @test log_events(job, Nothing) === nothing
+                @test log_events(job) === nothing
             end
         end
     end

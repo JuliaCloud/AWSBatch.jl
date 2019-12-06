@@ -228,7 +228,7 @@ include("mock.jl")
 
                 # Test no log events for the job submitted
                 events = log_events(job)
-                @test length(events) == 0
+                @test events === nothing
 
                 # Test logs for each individual job that is part of the job array
                 for i in 0:2
@@ -270,7 +270,7 @@ include("mock.jl")
                 deregister(job_definition)
 
                 events = log_events(job)
-                @test length(events) == 0
+                @test events === nothing
             end
 
             @testset "Failed Job" begin
@@ -301,7 +301,7 @@ include("mock.jl")
                 events = log_events(job)
 
                 # Cannot guarantee this job failure will always have logs
-                if length(events) > 0
+                if events !== nothing
                     @test first(events).message == "ERROR: Testing job failure"
                 end
             end
