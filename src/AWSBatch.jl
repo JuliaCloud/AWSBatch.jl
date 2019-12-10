@@ -19,6 +19,7 @@ export
     run_batch,
     describe,
     status,
+    status_reason,
     wait,
     log_events,
     isregistered,

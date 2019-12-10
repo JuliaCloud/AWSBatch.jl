@@ -112,6 +112,17 @@ function status(job::BatchJob)::JobState
 end
 
 """
+    status_reason(job::BatchJob) -> Union{String, Nothing}
+
+A short, human-readable string to provide additional details about the current status of the
+job.
+"""
+function status_reason(job::BatchJob)
+    details = describe(job)
+    return get(details, "statusReason", nothing)
+end
+
+"""
     wait(
         cond::Function,
         job::BatchJob;
@@ -204,102 +215,29 @@ function Base.wait(
 end
 
 
-if @__VERSION__() < v"1.4"
-    @doc """
-        log_events(job::BatchJob, Nothing) -> Union{Vector{LogEvent}, Nothing}
+"""
+    log_events(job::BatchJob) -> Union{Vector{LogEvent}, Nothing}
 
-    Fetches the logStreamName, fetches the CloudWatch logs and returns a vector of log events.
-    If the log stream does not currently exist then `nothing` is returned.
+Fetches the logStreamName, fetches the CloudWatch logs, and returns a vector of log events.
+If the log stream does not currently exist then `nothing` is returned.
 
-    NOTES:
-    - The `logStreamName` isn't available until the job is RUNNING, so you may want to use
-      `wait(job)` or `wait(job, [AWSBatch.SUCCEEDED])` prior to calling this function.
-    - We do not support pagination, so this function is limited to 10,000 log messages by
-      default.
-    """
-    function log_events(
-        job::BatchJob,
-        stream_missing_return_type::Union{Type{Vector{LogEvent}},Type{Nothing}}=Vector{LogEvent},
-    )
-        if stream_missing_return_type !== Nothing
-            Base.depwarn(
-                "Non-existent log streams will return `nothing` instead of `LogEvent[]` " *
-                "in the future. Use `log_events(job, Nothing)` to adopt the new behaviour.",
-                :log_events,
-            )
-        end
+NOTES:
+- The `logStreamName` isn't available until the job is RUNNING, so you may want to use
+  `wait(job)` or `wait(job, [AWSBatch.SUCCEEDED])` prior to calling this function.
+"""
+function log_events(job::BatchJob)
+    job_details = describe(job)
 
-        job_details = describe(job)
-
-        if haskey(job_details["container"], "logStreamName")
-            stream = job_details["container"]["logStreamName"]
-        else
-            return stream_missing_return_type()
-        end
-
-        info(logger, "Fetching log events from $stream")
-        output = try
-            @mock get_log_events(logGroupName="/aws/batch/job", logStreamName=stream)
-        catch e
-            # The batch job has a reference to a log stream but the stream has not yet been
-            # created.
-            if (
-                e isa AWSException &&
-                e.cause.status == 400 &&
-                e.info["message"] == "The specified log stream does not exist."
-            )
-                return stream_missing_return_type()
-            end
-
-            rethrow()
-        end
-
-        return convert.(LogEvent, output["events"])
+    if haskey(job_details["container"], "logStreamName")
+        stream = job_details["container"]["logStreamName"]
+    else
+        return nothing
     end
 
-else
-    @doc """
-        log_events(job::BatchJob) -> Union{Vector{LogEvent}, Nothing}
-
-    Fetches the logStreamName, fetches the CloudWatch logs and returns a vector of log events.
-    If the log stream does not currently exist then `nothing` is returned.
-
-    NOTES:
-    - The `logStreamName` isn't available until the job is RUNNING, so you may want to use
-      `wait(job)` or `wait(job, [AWSBatch.SUCCEEDED])` prior to calling this function.
-    - We do not support pagination, so this function is limited to 10,000 log messages by
-      default.
-    """
-    function log_events(job::BatchJob)
-        job_details = describe(job)
-
-        if haskey(job_details["container"], "logStreamName")
-            stream = job_details["container"]["logStreamName"]
-        else
-            return nothing
-        end
-
-        info(logger, "Fetching log events from $stream")
-        output = try
-            @mock get_log_events(logGroupName="/aws/batch/job", logStreamName=stream)
-        catch e
-            # The batch job has a reference to a log stream but the stream has not yet been
-            # created.
-            if (
-                e isa AWSException &&
-                e.cause.status == 400 &&
-                e.info["message"] == "The specified log stream does not exist."
-            )
-                return nothing
-            end
-
-            rethrow()
-        end
-
-        return convert.(LogEvent, output["events"])
-    end
+    info(logger, "Fetching log events from $stream")
+    return log_events("/aws/batch/job", stream)
 end
 
-if v"1.4" <= @__VERSION__() < v"1.5"
+if @__VERSION__() < v"1.5"
     @deprecate log_events(job::BatchJob, ::Union{Type{Vector{LogEvent}},Type{Nothing}}) log_events(job)
 end
