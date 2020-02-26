@@ -79,6 +79,9 @@ include("mock.jl")
                 @test wait(job, [AWSBatch.SUCCEEDED]; timeout=JOB_TIMEOUT) == true
                 @test status(job) == AWSBatch.SUCCEEDED
 
+                # Sleep for 5 seconds because sometimes cloudwatch logs aren't available
+                # right away
+                sleep(5)
                 events = log_events(job)
                 @test length(events) == 1
                 @test first(events).message == "Hello World!"
@@ -178,6 +181,9 @@ include("mock.jl")
                 @test status(job) == AWSBatch.SUCCEEDED
 
                 # Test the default string was overrriden succesfully
+                # Sleep for 5 seconds because sometimes cloudwatch logs aren't available
+                # right away
+                sleep(5)
                 events = log_events(job)
                 @test length(events) == 1
                 @test first(events).message == "Hello World!"
@@ -227,6 +233,9 @@ include("mock.jl")
                 @test job_details["arrayProperties"]["size"] == 3
 
                 # Test no log events for the job submitted
+                # Sleep for 5 seconds because sometimes cloudwatch logs aren't available
+                # right away
+                sleep(5)
                 events = log_events(job)
                 @test events === nothing
 
@@ -269,6 +278,9 @@ include("mock.jl")
 
                 deregister(job_definition)
 
+                # Sleep for 5 seconds because sometimes cloudwatch logs aren't available
+                # right away
+                sleep(5)
                 events = log_events(job)
                 @test events === nothing
             end
@@ -298,6 +310,9 @@ include("mock.jl")
 
                 deregister(job_definition)
 
+                # Sleep for 5 seconds because sometimes cloudwatch logs aren't available
+                # right away
+                sleep(5)
                 events = log_events(job)
 
                 # Cannot guarantee this job failure will always have logs
