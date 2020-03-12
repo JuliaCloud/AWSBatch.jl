@@ -38,10 +38,10 @@ variables:
   script:
     - aws cloudformation validate-template --template-body file://test/batch.yml
     - |
-      aws-create-stack \
+      aws-deploy-stack \
         --role-arn arn:aws:iam::${ACCOUNT_ID}:role/CloudFormationAdmin \
-        --stackname $STACK_NAME \
-        --template-body ./test/batch.yml \
+        --stack-name $STACK_NAME \
+        --template-file ./test/batch.yml \
         --wait \
         --params CIRoleArn=arn:aws:iam::${ACCOUNT_ID}:role/GitLabCIRunnerRole
 
