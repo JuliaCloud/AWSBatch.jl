@@ -53,13 +53,10 @@ variables:
     - ci-account
   variables:
     TESTS: "batch"  # Runs the online tests against AWS
-  script:
+  before_script:
     - *setup
     - assume_test_role
-    # Execute online tests
-    - source julia-ci export
-    - AWS_STACKNAME=$STACK_NAME ./julia-ci test
-    - ./julia-ci coverage
+    - export AWS_STACKNAME=$STACK_NAME  # Needed for tests
   extends: .test_shell
 
 "1.0 (AWS Batch)":
