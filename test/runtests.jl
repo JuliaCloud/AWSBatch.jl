@@ -8,6 +8,7 @@ using AWSTools.EC2: instance_region
 using Dates
 using HTTP: HTTP
 using Memento
+using Memento.TestUtils: @test_log, @test_nolog
 using Mocking
 using Test
 
@@ -251,38 +252,6 @@ include("mock.jl")
                 # Deregister the job definition
                 job_definition = JobDefinition(job)
                 deregister(job_definition)
-            end
-
-            @testset "Job Timed Out" begin
-                info(logger, "Testing job timeout")
-
-                job = run_batch(;
-                    name = "aws-batch-timeout-job-test",
-                    definition = "aws-bath-timeout-job-test",
-                    queue = STACK["JobQueueArn"],
-                    image = JULIA_BAKED_IMAGE,
-                    vcpus = 1,
-                    memory = 1024,
-                    role = STACK["JobRoleArn"],
-                    cmd = `sleep 60`,
-                )
-
-                job_definition = JobDefinition(job)
-                @test isregistered(job_definition) == true
-
-                @test_throws BatchJobError wait(
-                    state -> state < AWSBatch.SUCCEEDED,
-                    job;
-                    timeout=0
-                )
-
-                deregister(job_definition)
-
-                # Sleep for 5 seconds because sometimes cloudwatch logs aren't available
-                # right away
-                sleep(5)
-                events = log_events(job)
-                @test events === nothing
             end
 
             @testset "Failed Job" begin
