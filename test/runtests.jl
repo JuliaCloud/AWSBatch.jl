@@ -22,6 +22,7 @@ const TESTS = strip.(split(get(ENV, "TESTS", "local"), r"\s*,\s*"))
 const AWS_STACKNAME = get(ENV, "AWS_STACKNAME", "")
 const STACK = !isempty(AWS_STACKNAME) ? stack_output(AWS_STACKNAME) : Dict()
 const JOB_TIMEOUT = 900
+const LOG_TIMEOUT = 30
 
 const JULIA_BAKED_IMAGE = let
     output = read(`git ls-remote --tags https://github.com/JuliaLang/julia`, String)
@@ -36,6 +37,39 @@ end
 Memento.config!("debug"; fmt="[{level} | {name}]: {msg}")
 const logger = getlogger(AWSBatch)
 setlevel!(logger, "info")
+
+
+# We've been having issues with the log stream being created but no log events are present.
+# - https://gitlab.invenia.ca/invenia/AWSBatch.jl/issues/28
+# - https://gitlab.invenia.ca/invenia/AWSBatch.jl/issues/30
+#
+# This function allows for us to wait if logs are not present but avoids blocking when
+# logs are ready.
+#
+# Note: The timeout duration expects the job has reached the SUCCEEDED or FAILED state and
+# is not expected to last long enough for a job to complete running.
+function wait_for_log_events(job::BatchJob)
+    events = nothing
+
+    # Convert to Float64 until this is merged and we no longer use versions of Julia
+    # without PR (probably Julia 1.5+): https://github.com/JuliaLang/julia/pull/35103
+    timedwait(Float64(LOG_TIMEOUT); pollint=Float64(5)) do
+        events = log_events(job)
+
+        # Note: These warnings should assist in determining the special circumstances
+        # the log events not being present. Eventually warnings should be removed.
+        if events === nothing
+            notice(logger, "Log stream for $(job.id) does not exist")
+        elseif isempty(events)
+            notice(logger, "No log events for $(job.id)")
+        end
+
+        # Wait for log stream to exist and contain at least one event
+        events !== nothing && !isempty(events)
+    end
+
+    return events
+end
 
 include("mock.jl")
 
@@ -80,10 +114,7 @@ include("mock.jl")
                 @test wait(job, [AWSBatch.SUCCEEDED]; timeout=JOB_TIMEOUT) == true
                 @test status(job) == AWSBatch.SUCCEEDED
 
-                # Sleep for 5 seconds because sometimes cloudwatch logs aren't available
-                # right away
-                sleep(5)
-                events = log_events(job)
+                events = wait_for_log_events(job)
                 @test length(events) == 1
                 @test first(events).message == "Hello World!"
 
@@ -181,11 +212,7 @@ include("mock.jl")
                 @test wait(state -> state < AWSBatch.SUCCEEDED, job; timeout=JOB_TIMEOUT)
                 @test status(job) == AWSBatch.SUCCEEDED
 
-                # Test the default string was overrriden succesfully
-                # Sleep for 5 seconds because sometimes cloudwatch logs aren't available
-                # right away
-                sleep(5)
-                events = log_events(job)
+                events = wait_for_log_events(job)
                 @test length(events) == 1
                 @test first(events).message == "Hello World!"
 
@@ -233,17 +260,14 @@ include("mock.jl")
                 @test job_details["arrayProperties"]["statusSummary"] == status_summary
                 @test job_details["arrayProperties"]["size"] == 3
 
-                # Test no log events for the job submitted
-                # Sleep for 5 seconds because sometimes cloudwatch logs aren't available
-                # right away
-                sleep(5)
+                # No log stream will exist for the parent job
                 events = log_events(job)
                 @test events === nothing
 
                 # Test logs for each individual job that is part of the job array
                 for i in 0:2
                     job_id = "$(job.id):$i"
-                    events = log_events(BatchJob(job_id))
+                    events = wait_for_log_events(BatchJob(job_id))
 
                     @test length(events) == 1
                     @test first(events).message == "Hello World!"
@@ -277,17 +301,10 @@ include("mock.jl")
                     timeout=JOB_TIMEOUT
                 )
 
+                events = wait_for_log_events(job)
+                @test first(events).message == "ERROR: Testing job failure"
+
                 deregister(job_definition)
-
-                # Sleep for 5 seconds because sometimes cloudwatch logs aren't available
-                # right away
-                sleep(5)
-                events = log_events(job)
-
-                # Cannot guarantee this job failure will always have logs
-                if events !== nothing
-                    @test first(events).message == "ERROR: Testing job failure"
-                end
             end
         end
     else
