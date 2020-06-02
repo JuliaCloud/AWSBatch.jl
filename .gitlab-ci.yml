@@ -45,6 +45,12 @@ variables:
         --wait \
         --params CIRoleArn=arn:aws:iam::${ACCOUNT_ID}:role/GitLabCIRunnerRole
 
+.test:
+  before_script:
+    - echo "$common_functions" > common && source common
+    # `git` needed to determine latest release of Julia
+    - package_install git
+
 .test_batch:
   stage: test
   tags:
