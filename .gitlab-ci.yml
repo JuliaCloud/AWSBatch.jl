@@ -10,7 +10,7 @@ variables:
 # Variables that require shell execution or depend on a variable that does
 .setup: &setup
   |
-  echo "$common_functions" > common && source common
+  echo "$ci_init" > ci_init && source ci_init && rm ci_init
   STACK_NAME=$(stack_name $STACK_NAME_PREFIX)
   ACCOUNT_ID=$(aws_account_id)
 
@@ -47,7 +47,7 @@ variables:
 
 .test:
   before_script:
-    - echo "$common_functions" > common && source common
+    - echo "$ci_init" > ci_init && source ci_init && rm ci_init
     # `git` needed to determine latest release of Julia
     - package_install git
 
