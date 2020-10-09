@@ -33,6 +33,9 @@ variables:
   tags:
     - docker-ci
     - ci-account
+    # TODO: Needed until cloudspy supports multi-arch images:
+    # https://gitlab.invenia.ca/invenia/cloudspy/-/issues/85
+    - x86
   before_script:
     - *setup
   script:
@@ -82,10 +85,13 @@ variables:
   extends: .test_batch
 
 .delete: &delete
+  image: $CLOUDSPY_IMAGE
   tags:
     - docker-ci
     - ci-account
-  image: $CLOUDSPY_IMAGE
+    # TODO: Needed until cloudspy supports multi-arch images:
+    # https://gitlab.invenia.ca/invenia/cloudspy/-/issues/85
+    - x86
   before_script:
     - *setup
   script:
