@@ -11,9 +11,10 @@ struct JobQueue
 end
 
 Base.:(==)(a::JobQueue, b::JobQueue) = a.arn == b.arn
-
 describe(queue::JobQueue) = describe_job_queue(queue)
+describe_job_queue(queue::JobQueue) = describe_job_queue(queue.arn)
 max_vcpus(queue::JobQueue) = sum(max_vcpus(ce) for ce in compute_environments(queue))
+
 
 function compute_environments(queue::JobQueue)
     ce_order = describe(queue)["computeEnvironmentOrder"]
@@ -27,13 +28,13 @@ function compute_environments(queue::JobQueue)
     return compute_envs
 end
 
+
 function job_queue_arn(queue::AbstractString)
     startswith(queue, "arn:") && return queue
     json = describe_job_queue(queue)
     isempty(json) ? nothing : json["jobQueueArn"]
 end
 
-describe_job_queue(queue::JobQueue) = describe_job_queue(queue.arn)
 
 function describe_job_queue(queue::AbstractString)::OrderedDict
     json = @mock describe_job_queues(Dict("jobQueues" => [queue]))

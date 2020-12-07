@@ -10,23 +10,9 @@ using Dates
 using Memento
 using Mocking
 
-export
-    BatchJob,
-    ComputeEnvironment,
-    JobQueue,
-    JobDefinition,
-    JobState,
-    run_batch,
-    describe,
-    status,
-    status_reason,
-    wait,
-    log_events,
-    isregistered,
-    register,
-    deregister,
-    BatchEnvironmentError,
-    BatchJobError
+export BatchJob, ComputeEnvironment, BatchEnvironmentError, BatchJobError
+export JobQueue, JobDefinition, JobState
+export run_batch, describe, status, status_reason, wait, log_events, isregistered, register, deregister
 
 
 const logger = getlogger(@__MODULE__)
@@ -35,6 +21,7 @@ const logger = getlogger(@__MODULE__)
 __init__() = Memento.register(logger)
 
 
+include("exceptions.jl")
 include("version.jl")
 include("log_event.jl")
 include("compute_environment.jl")
@@ -42,16 +29,6 @@ include("job_queue.jl")
 include("job_state.jl")
 include("job_definition.jl")
 include("batch_job.jl")
-
-
-struct BatchEnvironmentError <: Exception
-    message::String
-end
-
-function Base.showerror(io::IO, e::BatchEnvironmentError)
-    print(io, "BatchEnvironmentError: ")
-    print(io, e.message)
-end
 
 
 """
@@ -223,7 +200,5 @@ function run_batch(;
         num_jobs=num_jobs,
     )
 end
-
-include("deprecated.jl")
 
 end  # AWSBatch

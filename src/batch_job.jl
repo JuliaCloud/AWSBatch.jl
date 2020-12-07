@@ -1,15 +1,6 @@
 using AWSSDK.Batch: describe_jobs, submit_job
 using AWSSDK.CloudWatchLogs: get_log_events
 
-struct BatchJobError <: Exception
-    job_id::AbstractString
-    message::String
-end
-
-function Base.showerror(io::IO, e::BatchJobError)
-    print(io, "BatchJobError: ")
-    print(io, e.message)
-end
 
 """
     BatchJob
