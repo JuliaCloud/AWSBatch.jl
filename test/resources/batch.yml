@@ -1,0 +1,219 @@
+# https://gitlab.invenia.ca/invenia/AWSBatch.jl/blob/master/test/batch.yml
+#
+# Creates a bare bones AWS Batch environment used to test the AWSBatch.jl.
+#
+# ```
+# aws cloudformation create-stack \
+#   --stack-name aws-batch-test \
+#   --template-body file://test/batch.yml \
+#   --capabilities CAPABILITY_NAMED_IAM
+# ```
+#
+# If you are planning on destroying your stack after you have finished running tests you
+# can use the following parameters to make the tests avoid delays with scaling the compute
+# environments by being slightly more expensive:
+#
+# ```
+# aws cloudformation create-stack \
+#   --stack-name aws-batch-test-fast \
+#   --template-body file://test/batch.yml \
+#   --capabilities CAPABILITY_NAMED_IAM \
+#   --parameters \
+#     ParameterKey=MinVCPUs,ParameterValue=16
+# ```
+
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  A bare bones AWS Batch environment used to test the AWSBatch.jl.
+
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html#aws-specific-parameter-types
+Parameters:
+  PublicCIUser:
+    Description: User which can assume the testing role
+    Type: String
+  VPCCidrBlock:
+    # https://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/VPC_Subnets.html#VPC_Sizing
+    Description: >-
+      The IP address range used for batch instances in the new VPC.
+    Type: String
+    Default: 10.0.0.0/16
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
+  MinVCPUs:
+    Description: >-
+      The minimum number of VCPUs to be available. Setting to 1 or higher makes jobs start
+      faster but will cost us more when instances are idle. Note you cannot decrease the
+      minimum number of VCPUs with a stack update.
+    Type: Number
+    Default: 0
+  MaxVCPUs:
+    Description: >-
+      The maximum number of VCPUs. Typically this number does not need to be touched
+    Type: Number
+    Default: 16
+  ProvisioningModel:
+    Description: Spot instances are cheaper than on-demand but can be abruptly terminated
+    Type: String
+    Default: spot
+    AllowedValues:
+      - on-demand
+      - spot
+
+Conditions:
+  OnDemandComputeEnvironment: !Equals [!Ref ProvisioningModel, on-demand]
+
+Resources:
+  ComputeEnvironment:
+    Type: AWS::Batch::ComputeEnvironment
+    DependsOn: BatchServiceRole  # Removing the ServiceRole before deleting the ComputeEnvironment will cause issues
+    Properties:
+      Type: MANAGED
+      ComputeEnvironmentName: !Ref AWS::StackName
+      ComputeResources:
+        Type: !If [OnDemandComputeEnvironment, EC2, SPOT]
+        BidPercentage: 100
+        MinvCpus: !Ref MinVCPUs
+        MaxvCpus: !Ref MaxVCPUs
+        InstanceTypes:
+          - optimal
+        Subnets:
+          - !Ref Subnet
+        SecurityGroupIds:
+          - !Ref SecurityGroup
+        InstanceRole: !Ref IamInstanceProfile
+        SpotIamFleetRole: !Ref BatchSpotFleetRole
+        Tags:
+          Name: !Sub "AWS Batch (${AWS::StackName})"
+      ServiceRole: !Ref BatchServiceRole
+  JobQueue:
+    Type: AWS::Batch::JobQueue
+    Properties:
+      JobQueueName: !Sub ${AWS::StackName}
+      Priority: 1
+      ComputeEnvironmentOrder:
+        - Order: 1
+          ComputeEnvironment: !Ref ComputeEnvironment
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: EC2 Security Group for instances launched in the VPC by Batch
+      VpcId: !Ref VPC
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VPCCidrBlock
+  Subnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: !Ref VPCCidrBlock
+      VpcId: !Ref VPC
+      MapPublicIpOnLaunch: True
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+  SubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTable
+      SubnetId: !Ref Subnet
+  Route:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    DependsOn: Subnet  # Detaching the gateway can fail if the VPC still contains public addresses
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+  IamInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref EcsInstanceRole
+  EcsInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2008-10-17
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
+  BatchServiceRole:
+    # http://docs.aws.amazon.com/batch/latest/userguide/spot_fleet_IAM_role.html
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: batch.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSBatchServiceRole
+  BatchSpotFleetRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: spotfleet.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2SpotFleetTaggingRole
+  JobRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: 2012-10-17
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: ecs-tasks.amazonaws.com  # Note: Shouldn't be batch.amazonaws.com
+              Action: sts:AssumeRole
+
+  TestPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: TestPolicy
+      Users:
+        - !Ref PublicCIUser
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - batch:RegisterJobDefinition
+              - batch:DescribeJobDefinitions
+              - batch:DeregisterJobDefinition
+              - batch:SubmitJob
+              - batch:DescribeJobs
+              - batch:DescribeJobQueues
+              - batch:DescribeComputeEnvironments
+            Resource: "*"
+          - Effect: Allow
+            Action: logs:GetLogEvents
+            Resource: "*"
+          - Effect: Allow
+            Action: iam:PassRole
+            Resource: !GetAtt JobRole.Arn
+          - Effect: Allow
+            Action: cloudformation:DescribeStacks
+            Resource: !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/*
+
+Outputs:
+  JobQueueArn:
+    Value: !Ref JobQueue
