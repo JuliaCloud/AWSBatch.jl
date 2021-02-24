@@ -1,8 +1,7 @@
 # AWSBatch
-
-[![Latest](https://img.shields.io/badge/docs-latest-blue.svg)](https://invenia.pages.invenia.ca/AWSBatch.jl/)
-[![Build Status](https://gitlab.invenia.ca/invenia/AWSBatch.jl/badges/master/build.svg)](https://gitlab.invenia.ca/invenia/AWSBatch.jl/commits/master)
-[![Coverage](https://gitlab.invenia.ca/invenia/AWSBatch.jl/badges/master/coverage.svg)](https://gitlab.invenia.ca/invenia/AWSBatch.jl/commits/master)
+[![CI](https://github.com/JuliaCloud/AWSBatch.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/JuliaCloud/AWSBatch.jl/actions/workflows/CI.yml)
+[![Docs: stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://juliacloud.github.io/AWSBatch.jl/stable)
+[![Docs: dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://juliacloud.github.io/AWSBatch.jl/dev)
 
 # Running the tests
 
