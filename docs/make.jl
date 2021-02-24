@@ -11,7 +11,7 @@ makedocs(;
     pages=[
         "Home" => "index.md",
     ],
-    repo="https://gitlab.invenia.ca/invenia/AWSBatch.jl/blob/{commit}{path}#L{line}",
+    repo="https://github.com/JuliaCloud/AWSBatch.jl/blob/{commit}{path}#L{line}",
     sitename="AWSBatch.jl",
     authors="Invenia Technical Computing",
     strict = true,
