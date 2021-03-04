@@ -26,10 +26,8 @@ const JOB_TIMEOUT = 900
 const LOG_TIMEOUT = 30
 
 const JULIA_BAKED_IMAGE = let
-    # Note: We currently cannot use HTTPS remotes
-    # https://github.com/JuliaPackaging/Yggdrasil/issues/1299
     output = git() do git_path
-        read(`$git_path ls-remote --tags git@github.com:JuliaLang/julia.git`, String)
+        read(`$git_path ls-remote --tags https://github.com/JuliaLang/julia`, String)
     end
     tags = split(replace(output, r".*\/" => ""))
     versions = VersionNumber.(filter(v -> !endswith(v, "^{}"), tags))
