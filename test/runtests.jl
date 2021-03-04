@@ -6,6 +6,7 @@ using AWSSDK.CloudWatchLogs: get_log_events
 using AWSTools.CloudFormation: stack_output
 using AWSTools.EC2: instance_region
 using Dates
+using Git_jll
 using HTTP: HTTP
 using Memento
 using Memento.TestUtils: @test_log, @test_nolog
@@ -25,9 +26,14 @@ const JOB_TIMEOUT = 900
 const LOG_TIMEOUT = 30
 
 const JULIA_BAKED_IMAGE = let
-    output = read(`git ls-remote --tags https://github.com/JuliaLang/julia`, String)
+    # Note: We currently cannot use HTTPS remotes
+    # https://github.com/JuliaPackaging/Yggdrasil/issues/1299
+    output = git() do git_path
+        read(`$git_path ls-remote --tags git@github.com:JuliaLang/julia.git`, String)
+    end
     tags = split(replace(output, r".*\/" => ""))
     versions = VersionNumber.(filter(v -> !endswith(v, "^{}"), tags))
+
     latest_version = maximum(versions)
     docker_tag = VERSION > latest_version ? "nightly" : "$VERSION"
 
