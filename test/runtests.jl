@@ -15,6 +15,19 @@ using Test
 
 Mocking.activate()
 
+function julia_versions()
+    output = withenv(
+        "GIT_SSL_CAINFO" => joinpath(dirname(Sys.BINDIR), "share", "julia", "cert.pem"),
+        "GIT_EXEC_PATH" => joinpath(Git_jll.artifact_dir, "libexec", "git-core"),
+    ) do
+        git() do git_path
+            read(`$git_path ls-remote --tags https://github.com/JuliaLang/julia`, String)
+        end
+    end
+    tags = split(replace(output, r".*\/" => ""))
+    return VersionNumber.(filter!(v -> !endswith(v, "^{}"), tags))
+end
+
 # Controls the running of various tests: "local", "batch"
 const TESTS = strip.(split(get(ENV, "TESTS", "local"), r"\s*,\s*"))
 
@@ -26,13 +39,7 @@ const JOB_TIMEOUT = 900
 const LOG_TIMEOUT = 30
 
 const JULIA_BAKED_IMAGE = let
-    output = git() do git_path
-        read(`$git_path ls-remote --tags https://github.com/JuliaLang/julia`, String)
-    end
-    tags = split(replace(output, r".*\/" => ""))
-    versions = VersionNumber.(filter(v -> !endswith(v, "^{}"), tags))
-
-    latest_version = maximum(versions)
+    latest_version = maximum(julia_versions())
     docker_tag = VERSION > latest_version ? "nightly" : "$VERSION"
 
     "468665244580.dkr.ecr.us-east-1.amazonaws.com/julia-baked:$docker_tag"
