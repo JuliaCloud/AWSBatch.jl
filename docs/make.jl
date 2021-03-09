@@ -21,4 +21,5 @@ makedocs(;
 deploydocs(;
     repo="github.com/JuliaCloud/AWSBatch.jl",
     push_preview=true,
+    devbranch = "main"
 )
