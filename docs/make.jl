@@ -17,3 +17,8 @@ makedocs(;
     strict = true,
     checkdocs = :none,
 )
+
+deploydocs(;
+    repo="github.com/JuliaCloud/AWSBatch.jl",
+    push_preview=true,
+)
