@@ -20,6 +20,7 @@ AWSCore = "0.5.2, 0.6"
 AWSSDK = "0.2, 0.3, 0.4, 0.5"
 AWSTools = "0.3.1, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1"
 AutoHashEquals = "0.2.0"
+Git_jll = "2.27"
 HTTP = "0.8.1"
 Memento = "0.7, 0.8, 0.9, 0.10, 0.11, 0.12, 0.13, 1"
 Mocking = "0.7"
@@ -27,8 +28,9 @@ OrderedCollections = "1.4"
 julia = "1"
 
 [extras]
+Git_jll = "f8c6e375-362e-5223-8a59-34ff63f689eb"
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["HTTP", "Test"]
+test = ["Git_jll", "HTTP", "Test"]
