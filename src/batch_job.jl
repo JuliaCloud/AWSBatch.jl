@@ -1,6 +1,3 @@
-using AWSSDK.Batch: describe_jobs, submit_job
-using AWSSDK.CloudWatchLogs: get_log_events
-
 
 """
     BatchJob
@@ -38,20 +35,14 @@ function submit(
     queue::AbstractString;
     container::AbstractDict=Dict(),
     parameters::Dict{String,String}=Dict{String, String}(),
-    region::AbstractString="",
     num_jobs::Integer=1,
+    aws_config::AbstractAWSConfig=global_aws_config(),
 )
-    region = isempty(region) ? "us-east-1" : region
-    config = aws_config(region = region)
-
     debug(logger, "Submitting job \"$name\"")
-    input = [
-        "jobName" => name,
-        "jobQueue" => queue,
-        "jobDefinition" => definition.arn,
+    input = OrderedDict(
         "parameters" => parameters,
         "containerOverrides" => container,
-    ]
+    )
 
     if num_jobs > 1
         # https://docs.aws.amazon.com/batch/latest/userguide/array_jobs.html
@@ -61,7 +52,7 @@ function submit(
 
     debug(logger, "Input: $input")
 
-    response = @mock submit_job(config, input)
+    response = @mock Batch.submit_job(definition.arn, name, queue, input; aws_config=aws_config)
     job = BatchJob(response["jobId"])
 
     if num_jobs > 1
@@ -78,8 +69,8 @@ end
 
 Provides details about the AWS batch job.
 """
-function describe(job::BatchJob)
-    response = @mock describe_jobs(; jobs=[job.id])
+function describe(job::BatchJob; aws_config::AbstractAWSConfig=global_aws_config())
+    response = @mock Batch.describe_jobs([job.id]; aws_config=aws_config)
     isempty(response["jobs"]) && error(logger, "Job $(job.id) not found.")
     debug(logger, "Job $(job.id): $response")
     return first(response["jobs"])
@@ -90,15 +81,17 @@ end
 
 Returns the job definition corresponding to a batch job.
 """
-JobDefinition(job::BatchJob) = JobDefinition(describe(job)["jobDefinition"])
+function JobDefinition(job::BatchJob; aws_config::AbstractAWSConfig=global_aws_config())
+    JobDefinition(describe(job)["jobDefinition"]; aws_config)
+end
 
 """
     status(job::BatchJob) -> JobState
 
 Returns the current status of a job.
 """
-function status(job::BatchJob)::JobState
-    details = describe(job)
+function status(job::BatchJob; aws_config::AbstractAWSConfig=global_aws_config())::JobState
+    details = describe(job; aws_config)
     return parse(JobState, details["status"])
 end
 
@@ -108,8 +101,8 @@ end
 A short, human-readable string to provide additional details about the current status of the
 job.
 """
-function status_reason(job::BatchJob)
-    details = describe(job)
+function status_reason(job::BatchJob; aws_config::AbstractAWSConfig=global_aws_config())
+    details = describe(job; aws_config)
     return get(details, "statusReason", nothing)
 end
 
@@ -136,7 +129,8 @@ function Base.wait(
     cond::Function,
     job::BatchJob;
     timeout=600,
-    delay=5
+    delay=5,
+    aws_config::AbstractAWSConfig=global_aws_config(),
 )
     completed = false
     last_state = PENDING
@@ -144,7 +138,7 @@ function Base.wait(
 
     start_time = time()  # System time in seconds since epoch
     while time() - start_time < timeout
-        state = status(job)
+        state = status(job; aws_config)
 
         if state != last_state || initial
             info(logger, "$(job.id) status $state")
@@ -229,6 +223,3 @@ function log_events(job::BatchJob)
     return log_events("/aws/batch/job", stream)
 end
 
-if @__VERSION__() < v"1.5"
-    @deprecate log_events(job::BatchJob, ::Union{Type{Vector{LogEvent}},Type{Nothing}}) log_events(job)
-end

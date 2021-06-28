@@ -1,6 +1,3 @@
-import AWSSDK.Batch:
-    describe_job_definitions, register_job_definition, deregister_job_definition
-
 """
     JobDefinition
 
@@ -9,11 +6,11 @@ Stores the job definition arn including the revision.
 @auto_hash_equals struct JobDefinition
     arn::AbstractString
 
-    function JobDefinition(name::AbstractString)
+    function JobDefinition(name::AbstractString; aws_config::AbstractAWSConfig=global_aws_config())
         if startswith(name, "arn:")
             new(name)
         else
-            arn = job_definition_arn(name)
+            arn = job_definition_arn(name; aws_config)
             arn === nothing && error("No job definition ARN found for $name")
             new(arn)
         end
@@ -24,7 +21,8 @@ end
     job_definition_arn(
         definition_name::AbstractString;
         image::AbstractString="",
-        role::AbstractString=""
+        role::AbstractString="",
+        aws_config::AbstractAWSConfig=global_aws_config(),
     ) -> Union{AbstractString, Nothing}
 
 Looks up the ARN (Amazon Resource Name) for the latest job definition that can be reused.
@@ -41,8 +39,9 @@ function job_definition_arn(
     definition_name::AbstractString;
     image::AbstractString="",
     role::AbstractString="",
+    aws_config::AbstractAWSConfig=global_aws_config(),
 )
-    response = describe_job_definition(definition_name)
+    response = describe_job_definition(definition_name; aws_config)
     if !isempty(response["jobDefinitions"])
 
         latest = first(response["jobDefinitions"])
@@ -97,31 +96,27 @@ function register(
     definition_name::AbstractString;
     image::AbstractString="",
     role::AbstractString="",
+    type::AbstractString="container",
     vcpus::Integer=1,
     memory::Integer=1024,
     cmd::Cmd=``,
-    region::AbstractString="",
     parameters::Dict{String, String}=Dict{String, String}(),
+    aws_config::AbstractAWSConfig=global_aws_config(),
 )
-    region = isempty(region) ? "us-east-1" : region
-    config = aws_config(region = region)
-
     debug(logger, "Registering job definition \"$definition_name\"")
-    input = [
-        "type" => "container",
+    input = OrderedDict(
         "parameters" => parameters,
-        "containerProperties" => [
+        "containerProperties" => OrderedDict(
             "image" => image,
             "vcpus" => vcpus,
             "memory" => memory,
             "command" => cmd.exec,
             "jobRoleArn" => role,
-        ],
-        "jobDefinitionName" => definition_name,
-    ]
+        ),
+    )
 
-    response = @mock register_job_definition(config, input)
-    definition = JobDefinition(response["jobDefinitionArn"])
+    response = @mock Batch.register_job_definition(definition_name, type, input; aws_config=aws_config)
+    definition = JobDefinition(response["jobDefinitionArn"]; aws_config)
     info(logger, "Registered job definition \"$(definition.arn)\"")
     return definition
 end
@@ -131,36 +126,52 @@ end
 
 Deregisters an AWS Batch job.
 """
-function deregister(definition::JobDefinition)
+function deregister(definition::JobDefinition; aws_config::AbstractAWSConfig=global_aws_config())
     debug(logger, "Deregistering job definition \"$(definition.arn)\"")
-    resp = deregister_job_definition(Dict("jobDefinition" => definition.arn))
+    resp = @mock Batch.deregister_job_definition(definition.arn; aws_config=aws_config)
     info(logger, "Deregistered job definition \"$(definition.arn)\"")
 end
 
 """
-    isregistered(definition::JobDefinition) -> Bool
+    isregistered(definition::JobDefinition; aws_config=global_aws_config()) -> Bool
 
 Checks if a JobDefinition is registered.
 """
-function isregistered(definition::JobDefinition)
-    j = describe(definition)
+function isregistered(definition::JobDefinition; aws_config::AbstractAWSConfig=global_aws_config())
+    j = describe(definition; aws_config)
     return any(d -> d["status"] == "ACTIVE", get(j, "jobDefinitions", []))
 end
 
 """
-    describe(definition::JobDefinition) -> Dict
+    list_job_definitions(;aws_config=global_aws_config())
+
+Get a list of `JobDefinition` objects via `Batch.decsribe_job_definitions()`.
+"""
+function list_job_definitions(;aws_config::AbstractAWSConfig=global_aws_config())
+    [JobDefinition(a["jobDefinitionArn"]) for
+     a ∈ Batch.describe_job_definitions(;aws_config)["jobDefinitions"]]
+end
+
+"""
+    describe(definition::JobDefinition; aws_config=global_aws_config()) -> Dict
 
 Describes a job definition as a dictionary. Requires the IAM permissions
 "batch:DescribeJobDefinitions".
 """
-describe(definition::JobDefinition) = describe_job_definition(definition)
+function describe(definition::JobDefinition; aws_config::AbstractAWSConfig=global_aws_config())
+    describe_job_definition(definition; aws_config)
+end
 
-describe_job_definition(definition::JobDefinition) = describe_job_definition(definition.arn)
-function describe_job_definition(definition::AbstractString)
+function describe_job_definition(definition::JobDefinition;
+                                 aws_config::AbstractAWSConfig=global_aws_config())
+    describe_job_definition(definition.arn; aws_config)
+end
+function describe_job_definition(definition::AbstractString;
+                                 aws_config::AbstractAWSConfig=global_aws_config())
     query = if startswith(definition, "arn:")
         Dict("jobDefinitions" => [definition])
     else
         Dict("jobDefinitionName" => definition)
     end
-    return @mock describe_job_definitions(query)
+    return @mock Batch.describe_job_definitions(query; aws_config=aws_config)
 end
