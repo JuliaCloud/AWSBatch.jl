@@ -13,7 +13,7 @@ function describe(queue::JobQueue; aws_config::AbstractAWSConfig=global_aws_conf
     return describe_job_queue(queue; aws_config)
 end
 function describe_job_queue(queue::JobQueue; aws_config::AbstractAWSConfig=global_aws_config())
-    describe_job_queue(queue.arn; aws_config)
+    return describe_job_queue(queue.arn; aws_config)
 end
 function max_vcpus(queue::JobQueue; aws_config::AbstractAWSConfig=global_aws_config())
     sum(max_vcpus(ce; aws_config) for ce in compute_environments(queue; aws_config))
