@@ -3,14 +3,17 @@ using OrderedCollections: OrderedDict
 @testset "ComputeEnvironment" begin
     @testset "constructor" begin
         arn = "arn:aws:batch:us-east-1:000000000000:compute-environment/ce"
-        @test ComputeEnvironment(arn).arn == arn
-
         patch = describe_compute_environments_patch(
             OrderedDict(
                 "computeEnvironmentName" => "ce-name",
                 "computeEnvironmentArn" => arn,
             )
         )
+
+        apply(patch) do
+            @test ComputeEnvironment(arn).arn == arn
+        end
+
         apply(patch) do
             @test ComputeEnvironment("ce-name").arn == arn
         end

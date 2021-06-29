@@ -8,9 +8,10 @@ using Memento
 using Mocking
 
 @service Batch
+@service Cloudwatch_Logs
 
 export BatchJob, ComputeEnvironment, BatchEnvironmentError, BatchJobError
-export JobQueue, JobDefinition, JobState
+export JobQueue, JobDefinition, JobState, LogEvent
 export run_batch, describe, status, status_reason, wait, log_events, isregistered, register, deregister
 export list_job_queues, list_job_definitions, create_compute_environment, create_job_queue
 
@@ -101,11 +102,11 @@ function run_batch(;
         job_id = ENV["AWS_BATCH_JOB_ID"]
         job_queue = ENV["AWS_BATCH_JQ_NAME"]
 
-        # Get the zone information from the EC2 instance metadata.
-        isempty(region) && (region = @mock instance_region())
+        # if not specified, get region from the aws_config
+        isempty(region) && (region = aws_config.region)
 
         # Requires permissions to access to "batch:DescribeJobs"
-        response = @mock describe_jobs([job_id]; aws_config=aws_config)
+        response = @mock Batch.describe_jobs([job_id]; aws_config=aws_config)
 
         # Use the job's description to only update fields that are using the default
         # values since explict arguments passed in via `kwargs` have higher priority
@@ -165,8 +166,8 @@ function run_batch(;
                 vcpus=vcpus,
                 memory=memory,
                 cmd=cmd,
-                region=region,
                 parameters=parameters,
+                aws_config=aws_config,
             )
         else
             throw(BatchEnvironmentError(string(
@@ -193,10 +194,9 @@ function run_batch(;
     return submit(
         name,
         definition,
-        queue;
+        JobQueue(queue);
         container=container_overrides,
         parameters=parameters,
-        region=region,
         num_jobs=num_jobs,
     )
 end

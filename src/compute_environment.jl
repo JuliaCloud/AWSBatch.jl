@@ -18,23 +18,33 @@ function max_vcpus(ce::ComputeEnvironment; aws_config::AbstractAWSConfig=global_
     describe(ce; aws_config)["computeResources"]["maxvCpus"]
 end
 
-# TODO this probably is not done
 """
-    create_compute_environment(name, type="container";
+    create_compute_environment(name;
+                               managed=true,
+                               role="",
+                               resources=Dict(),
+                               enabled=true,
+                               tags=Dict(),
                                aws_config=global_aws_config())
 
 Create a compute environment of type `type` with name `name`.
+
+See the AWS docs [here](https://docs.aws.amazon.com/batch/latest/APIReference/API_CreateComputeEnvironment.html).
 """
 function create_compute_environment(name::AbstractString;
-                                    managed::Bool=false, resources::AbstractDict=Dict{String,String}(),
+                                    managed::Bool=true,
+                                    role::AbstractString="",
+                                    resources::AbstractDict=Dict{String,Any}(),
+                                    enabled::Bool=true,
+                                    tags::AbstractDict=Dict{String,Any}(),
                                     aws_config::AbstractAWSConfig=global_aws_config())
     type = managed ? "MANAGED" : "UNMANAGED"
-    return if isempty(resources)
-        @mock Batch.create_compute_environment(name, type; aws_config=aws_config)
-    else
-        params = Dict("computeResources"=>resources)
-        @mock Batch.create_compute_environment(name, type, params; aws_config=aws_config)
-    end
+    args = Dict{String,Any}()
+    isempty(role) || (args["serviceRole"] = role)
+    isempty(resources) || (args["computeResources"] = resources)
+    isempty(tags) || (args["tags"] = tags)
+    enabled || (args["state"] = "DISABLED")
+    return @mock Batch.create_compute_environment(name, type, args; aws_config=aws_config)
 end
 
 function compute_environment_arn(ce::AbstractString; aws_config::AbstractAWSConfig=global_aws_config())

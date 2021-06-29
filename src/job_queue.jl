@@ -19,16 +19,29 @@ function max_vcpus(queue::JobQueue; aws_config::AbstractAWSConfig=global_aws_con
     sum(max_vcpus(ce; aws_config) for ce in compute_environments(queue; aws_config))
 end
 
-# TODO the below is not done, it needs compute environemnt
+function _create_compute_environment_order(envs)
+    map(enumerate(envs)) do (i, env)
+        Dict{String,Any}("computeEnvironment"=>env, "order"=>i)
+    end
+end
+
 """
-    create_job_queue(name, priority=1; aws_config=global_aws_config())
+    create_job_queue(name, envs, priority=1; aws_config=global_aws_config())
 
 Create a job queue with name `name` and priority `priority` returning the associated `JobQueue` object.
+`envs` must be an iterator of compute environments given by ARN.
+
+See the AWS docs [here](https://docs.aws.amazon.com/batch/latest/APIReference/API_CreateJobQueue.html).
 """
-function create_job_queue(name::AbstractString, priority::Integer=1;
+function create_job_queue(name::AbstractString, envs, priority::Integer=1;
+                          enabled::Bool=true,
+                          tags::AbstractDict=Dict{String,Any}(),
                           aws_config::AbstractAWSConfig=global_aws_config())
-    # TODO this needs to return a JobQueue object
-    return @mock Batch.create_job_queue(["container"], name, priority; aws_config=aws_config)
+    env = _create_compute_environment_order(envs)
+    args = Dict{String,Any}()
+    enabled || (args["state"] = "DISABLED")
+    isempty(tags) || (args["tags"] = tags)
+    return @mock Batch.create_job_queue(env, name, priority, args; aws_config=aws_config)
 end
 
 
@@ -53,8 +66,7 @@ function compute_environments(queue::JobQueue; aws_config::AbstractAWSConfig=glo
     compute_envs = Vector{ComputeEnvironment}(undef, length(ce_order))
     for ce in ce_order
         i, arn = ce["order"], ce["computeEnvironment"]
-        # AWS is using 0-based indexing, so we must translate
-        compute_envs[i+1] = ComputeEnvironment(arn)
+        compute_envs[i] = ComputeEnvironment(arn)
     end
 
     return compute_envs

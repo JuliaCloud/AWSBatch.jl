@@ -20,10 +20,9 @@ end
     submit(
         name::AbstractString,
         definition::JobDefinition,
-        queue::AbstractString;
+        queue::JobQueue;
         container::AbstractDict=Dict(),
         parameters::Dict{String,String}=Dict{String, String}(),
-        region::AbstractString="",
         num_jobs::Integer=1,
     ) -> BatchJob
 
@@ -32,7 +31,7 @@ Handles submitting the batch job. Returns a `BatchJob` wrapper for the id.
 function submit(
     name::AbstractString,
     definition::JobDefinition,
-    queue::AbstractString;
+    queue::JobQueue;
     container::AbstractDict=Dict(),
     parameters::Dict{String,String}=Dict{String, String}(),
     num_jobs::Integer=1,
@@ -52,7 +51,7 @@ function submit(
 
     debug(logger, "Input: $input")
 
-    response = @mock Batch.submit_job(definition.arn, name, queue, input; aws_config=aws_config)
+    response = @mock Batch.submit_job(definition.arn, name, queue.arn, input; aws_config=aws_config)
     job = BatchJob(response["jobId"])
 
     if num_jobs > 1
