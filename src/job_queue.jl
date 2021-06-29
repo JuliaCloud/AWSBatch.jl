@@ -10,7 +10,7 @@ end
 
 Base.:(==)(a::JobQueue, b::JobQueue) = a.arn == b.arn
 function describe(queue::JobQueue; aws_config::AbstractAWSConfig=global_aws_config())
-    describe_job_queue(queue; aws_config)
+    return describe_job_queue(queue; aws_config)
 end
 function describe_job_queue(queue::JobQueue; aws_config::AbstractAWSConfig=global_aws_config())
     describe_job_queue(queue.arn; aws_config)
