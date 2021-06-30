@@ -54,7 +54,7 @@ run_batch()
 
 ```@docs
 AWSBatch.BatchJob
-AWSBatch.submit(::AbstractString, ::JobDefinition, ::AbstractString)
+AWSBatch.submit
 AWSBatch.describe(::BatchJob)
 AWSBatch.JobDefinition(::BatchJob)
 AWSBatch.status(::BatchJob)
@@ -67,11 +67,22 @@ AWSBatch.log_events(::BatchJob)
 
 ```@docs
 AWSBatch.JobDefinition
+AWSBatch.ComputeEnvironment
+AWSBatch.create_compute_environment
+AWSBatch.list_job_definitions
 AWSBatch.job_definition_arn(::AbstractString)
 AWSBatch.register(::AbstractString)
 AWSBatch.deregister(::JobDefinition)
 AWSBatch.isregistered(::JobDefinition)
 AWSBatch.describe(::JobDefinition)
+```
+
+### JobQueue
+
+```@docs
+AWSBatch.JobQueue
+AWSBatch.create_job_queue
+AWSBatch.list_job_queues
 ```
 
 ### JobState

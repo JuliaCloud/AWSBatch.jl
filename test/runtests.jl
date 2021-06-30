@@ -1,10 +1,5 @@
+using AWS
 using AWSBatch
-using AWSBatch: LogEvent, describe_jobs, describe_job_definitions, register_job_definition,
-    submit_job
-using AWSCore: AWSConfig, AWSException
-using AWSSDK.CloudWatchLogs: get_log_events
-using AWSTools.CloudFormation: stack_output
-using AWSTools.EC2: instance_region
 using Dates
 using HTTP: HTTP
 using Memento
@@ -12,7 +7,13 @@ using Memento.TestUtils: @test_log, @test_nolog
 using Mocking
 using Test
 
+using AWS.AWSExceptions: AWSException
+
 Mocking.activate()
+
+# need to define these to make sure we don't inadvertently try to talk to AWS
+ENV["AWS_ACCESS_KEY_ID"] = ""
+ENV["AWS_SECRET_ACCESS_KEY"] = ""
 
 # Controls the running of various tests: "local", "batch"
 const TESTS = strip.(split(get(ENV, "TESTS", "local"), r"\s*,\s*"))
@@ -192,7 +193,6 @@ include("mock.jl")
                     vcpus=1,
                     memory=1024,
                     cmd=command,
-                    region="us-east-1",
                     parameters=Dict("juliacmd" => "println(\"Default String\")"),
                 )
 

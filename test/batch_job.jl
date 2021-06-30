@@ -3,7 +3,7 @@
 
     @testset "status_reason" begin
         @testset "not provided" begin
-            patch = @patch function describe_jobs(; kwargs...)
+            patch = @patch function AWSBatch.Batch.describe_jobs(args...; kwargs...)
                 Dict(
                     "jobs" => [
                         Dict()
@@ -18,7 +18,7 @@
 
         @testset "provided" begin
             reason = "Essential container in task exited"
-            patch = @patch function describe_jobs(; kwargs...)
+            patch = @patch function AWSBatch.Batch.describe_jobs(args...; kwargs...)
                 Dict(
                     "jobs" => [
                         Dict("statusReason" => reason)
@@ -48,7 +48,7 @@
         function status_patch(states)
             index = 1
 
-            return @patch function describe_jobs(; kwargs...)
+            return @patch function AWSBatch.Batch.describe_jobs(args...; kwargs...)
                 json = Dict(
                     "jobs" => [
                         Dict("status" => states[index])
