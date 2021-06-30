@@ -1,5 +1,5 @@
-using AWSBatch
 using AWS
+using AWSBatch
 using Dates
 using HTTP: HTTP
 using Memento
