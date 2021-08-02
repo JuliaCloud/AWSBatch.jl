@@ -80,7 +80,7 @@ function run_batch(;
 
     # Determine if the job definition already exists and update the default job parameters
     if definition !== nothing
-        response = describe_job_definition(definition; aws_config)
+        response = describe_job_definition(definition; aws_config=aws_config)
         if !isempty(response["jobDefinitions"])
             details = first(response["jobDefinitions"])
 

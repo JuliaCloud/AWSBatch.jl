@@ -81,7 +81,7 @@ end
 Returns the job definition corresponding to a batch job.
 """
 function JobDefinition(job::BatchJob; aws_config::AbstractAWSConfig=global_aws_config())
-    JobDefinition(describe(job)["jobDefinition"]; aws_config)
+    JobDefinition(describe(job)["jobDefinition"]; aws_config=aws_config)
 end
 
 """
@@ -90,7 +90,7 @@ end
 Returns the current status of a job.
 """
 function status(job::BatchJob; aws_config::AbstractAWSConfig=global_aws_config())::JobState
-    details = describe(job; aws_config)
+    details = describe(job; aws_config=aws_config)
     return parse(JobState, details["status"])
 end
 
@@ -101,7 +101,7 @@ A short, human-readable string to provide additional details about the current s
 job.
 """
 function status_reason(job::BatchJob; aws_config::AbstractAWSConfig=global_aws_config())
-    details = describe(job; aws_config)
+    details = describe(job; aws_config=aws_config)
     return get(details, "statusReason", nothing)
 end
 
@@ -137,7 +137,7 @@ function Base.wait(
 
     start_time = time()  # System time in seconds since epoch
     while time() - start_time < timeout
-        state = status(job; aws_config)
+        state = status(job; aws_config=aws_config)
 
         if state != last_state || initial
             info(logger, "$(job.id) status $state")

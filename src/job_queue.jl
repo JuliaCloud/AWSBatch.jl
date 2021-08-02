@@ -2,7 +2,7 @@ struct JobQueue
     arn::String
 
     function JobQueue(queue::AbstractString; aws_config::AbstractAWSConfig=global_aws_config())
-        arn = job_queue_arn(queue; aws_config)
+        arn = job_queue_arn(queue; aws_config=aws_config)
         arn === nothing && error("No job queue ARN found for: $queue")
         new(arn)
     end
@@ -10,13 +10,13 @@ end
 
 Base.:(==)(a::JobQueue, b::JobQueue) = a.arn == b.arn
 function describe(queue::JobQueue; aws_config::AbstractAWSConfig=global_aws_config())
-    return describe_job_queue(queue; aws_config)
+    return describe_job_queue(queue; aws_config=aws_config)
 end
 function describe_job_queue(queue::JobQueue; aws_config::AbstractAWSConfig=global_aws_config())
-    return describe_job_queue(queue.arn; aws_config)
+    return describe_job_queue(queue.arn; aws_config=aws_config)
 end
 function max_vcpus(queue::JobQueue; aws_config::AbstractAWSConfig=global_aws_config())
-    sum(max_vcpus(ce; aws_config) for ce in compute_environments(queue; aws_config))
+    sum(max_vcpus(ce; aws_config=aws_config) for ce in compute_environments(queue; aws_config=aws_config))
 end
 
 function _create_compute_environment_order(envs)
@@ -51,7 +51,7 @@ end
 Get a list of `JobQueue` objects as returned by `Batch.describe_job_queues()`.
 """
 function list_job_queues(;aws_config::AbstractAWSConfig=global_aws_config())
-    [JobQueue(q["jobQueueArn"]) for q ∈ Batch.describe_job_queues(;aws_config)["jobQueues"]]
+    [JobQueue(q["jobQueueArn"]) for q ∈ Batch.describe_job_queues(;aws_config=aws_config)["jobQueues"]]
 end
 
 
@@ -75,7 +75,7 @@ end
 
 function job_queue_arn(queue::AbstractString; aws_config::AbstractAWSConfig=global_aws_config())
     startswith(queue, "arn:") && return queue
-    json = describe_job_queue(queue; aws_config)
+    json = describe_job_queue(queue; aws_config=aws_config)
     isempty(json) ? nothing : json["jobQueueArn"]
 end
 

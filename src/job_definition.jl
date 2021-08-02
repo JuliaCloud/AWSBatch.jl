@@ -10,7 +10,7 @@ Stores the job definition arn including the revision.
         if startswith(name, "arn:")
             new(name)
         else
-            arn = job_definition_arn(name; aws_config)
+            arn = job_definition_arn(name; aws_config=aws_config)
             arn === nothing && error("No job definition ARN found for $name")
             new(arn)
         end
@@ -41,7 +41,7 @@ function job_definition_arn(
     role::AbstractString="",
     aws_config::AbstractAWSConfig=global_aws_config(),
 )
-    response = describe_job_definition(definition_name; aws_config)
+    response = describe_job_definition(definition_name; aws_config=aws_config)
     if !isempty(response["jobDefinitions"])
 
         latest = first(response["jobDefinitions"])
@@ -116,7 +116,7 @@ function register(
     )
 
     response = @mock Batch.register_job_definition(definition_name, type, input; aws_config=aws_config)
-    definition = JobDefinition(response["jobDefinitionArn"]; aws_config)
+    definition = JobDefinition(response["jobDefinitionArn"]; aws_config=aws_config)
     info(logger, "Registered job definition \"$(definition.arn)\"")
     return definition
 end
@@ -138,7 +138,7 @@ end
 Checks if a JobDefinition is registered.
 """
 function isregistered(definition::JobDefinition; aws_config::AbstractAWSConfig=global_aws_config())
-    j = describe(definition; aws_config)
+    j = describe(definition; aws_config=aws_config)
     return any(d -> d["status"] == "ACTIVE", get(j, "jobDefinitions", []))
 end
 
@@ -148,7 +148,7 @@ end
 Get a list of `JobDefinition` objects via `Batch.decsribe_job_definitions()`.
 """
 function list_job_definitions(;aws_config::AbstractAWSConfig=global_aws_config())
-    job_definitions = Batch.describe_job_definitions(; aws_config)["jobDefinitions"]
+    job_definitions = Batch.describe_job_definitions(; aws_config=aws_config)["jobDefinitions"]
     
     return [JobDefintiion(jd["jobDefinitionArn"]) for jd in job_definitions]
 end
@@ -160,12 +160,12 @@ Describes a job definition as a dictionary. Requires the IAM permissions
 "batch:DescribeJobDefinitions".
 """
 function describe(definition::JobDefinition; aws_config::AbstractAWSConfig=global_aws_config())
-    describe_job_definition(definition; aws_config)
+    describe_job_definition(definition; aws_config=aws_config)
 end
 
 function describe_job_definition(definition::JobDefinition;
                                  aws_config::AbstractAWSConfig=global_aws_config())
-    describe_job_definition(definition.arn; aws_config)
+    describe_job_definition(definition.arn; aws_config=aws_config)
 end
 function describe_job_definition(definition::AbstractString;
                                  aws_config::AbstractAWSConfig=global_aws_config())
