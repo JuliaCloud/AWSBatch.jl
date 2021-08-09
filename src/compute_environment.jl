@@ -12,10 +12,10 @@ end
 Base.:(==)(a::ComputeEnvironment, b::ComputeEnvironment) = a.arn == b.arn
 
 function describe(ce::ComputeEnvironment; aws_config::AbstractAWSConfig=global_aws_config())
-    describe_compute_environment(ce; aws_config)
+    describe_compute_environment(ce; aws_config=aws_config)
 end
 function max_vcpus(ce::ComputeEnvironment; aws_config::AbstractAWSConfig=global_aws_config())
-    describe(ce; aws_config)["computeResources"]["maxvCpus"]
+    describe(ce; aws_config=aws_config)["computeResources"]["maxvCpus"]
 end
 
 """
