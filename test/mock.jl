@@ -97,7 +97,7 @@ const DESCRIBE_JOBS_RESP = Dict(
 )
 
 function describe_compute_environments_patch(output::Vector=[])
-    @patch function AWSBatch.Batch.describe_compute_environments(d::Dict; aws_config)
+    @patch function AWSBatch.Batch.describe_compute_environments(d::Dict; aws_config=aws_config)
         compute_envs = d["computeEnvironments"]
         @assert length(compute_envs) == 1
         ce = first(compute_envs)
@@ -113,7 +113,7 @@ function describe_compute_environments_patch(output::OrderedDict)
 end
 
 function describe_job_queues_patch(output::Vector=[])
-    @patch function AWSBatch.Batch.describe_job_queues(d::Dict; aws_config)
+    @patch function AWSBatch.Batch.describe_job_queues(d::Dict; aws_config=aws_config)
         queues = d["jobQueues"]
         @assert length(queues) == 1
         queue = first(queues)

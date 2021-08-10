@@ -61,7 +61,7 @@ end
 Get a list of `ComputeEnvironment` objects associated with the `JobQueue`.
 """
 function compute_environments(queue::JobQueue; aws_config::AbstractAWSConfig=global_aws_config())
-    ce_order = describe(queue; aws_config)["computeEnvironmentOrder"]
+    ce_order = describe(queue; aws_config=aws_config)["computeEnvironmentOrder"]
 
     compute_envs = Vector{ComputeEnvironment}(undef, length(ce_order))
     for ce in ce_order
