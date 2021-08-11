@@ -13,4 +13,4 @@ ENV["TESTS"] = "batch"
 ENV["AWS_STACKNAME"] = "aws-batch-manager-test"
 ```
 
-To make an `aws-batch-manager-test` compatible stack you can use the CloudFormation template [test/batch.yml](./test/batch.yml).
+To make an `aws-batch-manager-test` compatible stack you can use the CloudFormation template [test/resources/batch.yml](./test/batch.yml).
