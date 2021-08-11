@@ -36,7 +36,8 @@ end
 Fetches the CloudWatch log from the specified log group and stream as a `Vector` of
 `LogEvent`s. If the log stream does not exist then `nothing` will be returned.
 """
-function log_events(log_group::AbstractString, log_stream::AbstractString)
+function log_events(log_group::AbstractString, log_stream::AbstractString;
+                    aws_config::AbstractAWSConfig=global_aws_config())
     events = LogEvent[]
 
     curr_token = nothing
@@ -45,17 +46,17 @@ function log_events(log_group::AbstractString, log_stream::AbstractString)
     # We've hit the end of the stream if the next token matches the current one.
     while next_token != curr_token || next_token === nothing
         response = try
-            @mock get_log_events(
-                logGroupName=log_group,
-                logStreamName=log_stream,
-                nextToken=next_token,
+            @mock Cloudwatch_Logs.get_log_events(
+                log_group, log_stream,
+                Dict("nextToken"=>next_token);
+                aws_config=aws_config,
             )
         catch e
             # The specified log stream does not exist. Specifically, this can occur when
             # a batch job has a reference to a log stream but the stream has not yet been
             # created.
             if (
-                e isa AWSException &&
+                e isa AWSExceptions.AWSException &&
                 e.cause.status == 400 &&
                 e.info["message"] == "The specified log stream does not exist."
             )

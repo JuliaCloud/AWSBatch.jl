@@ -1,23 +1,75 @@
-using AWSSDK.Batch: describe_job_queues
 
+"""
+    JobQueue
+
+An object representing and AWS batch job queue.
+
+See [`AWSBatch.create_job_queue`](@ref).
+"""
 struct JobQueue
     arn::String
 
-    function JobQueue(queue::AbstractString)
-        arn = job_queue_arn(queue)
+    function JobQueue(queue::AbstractString; aws_config::AbstractAWSConfig=global_aws_config())
+        arn = job_queue_arn(queue; aws_config=aws_config)
         arn === nothing && error("No job queue ARN found for: $queue")
         new(arn)
     end
 end
 
 Base.:(==)(a::JobQueue, b::JobQueue) = a.arn == b.arn
-describe(queue::JobQueue) = describe_job_queue(queue)
-describe_job_queue(queue::JobQueue) = describe_job_queue(queue.arn)
-max_vcpus(queue::JobQueue) = sum(max_vcpus(ce) for ce in compute_environments(queue))
+function describe(queue::JobQueue; aws_config::AbstractAWSConfig=global_aws_config())
+    return describe_job_queue(queue; aws_config=aws_config)
+end
+function describe_job_queue(queue::JobQueue; aws_config::AbstractAWSConfig=global_aws_config())
+    return describe_job_queue(queue.arn; aws_config=aws_config)
+end
+function max_vcpus(queue::JobQueue; aws_config::AbstractAWSConfig=global_aws_config())
+    sum(max_vcpus(ce; aws_config=aws_config) for ce in compute_environments(queue; aws_config=aws_config))
+end
+
+function _create_compute_environment_order(envs)
+    map(enumerate(envs)) do (i, env)
+        Dict{String,Any}("computeEnvironment"=>env, "order"=>i)
+    end
+end
+
+"""
+    create_job_queue(name, envs, priority=1; aws_config=global_aws_config())
+
+Create a job queue with name `name` and priority `priority` returning the associated `JobQueue` object.
+`envs` must be an iterator of compute environments given by ARN.
+
+See the AWS docs [here](https://docs.aws.amazon.com/batch/latest/APIReference/API_CreateJobQueue.html).
+"""
+function create_job_queue(name::AbstractString, envs, priority::Integer=1;
+                          enabled::Bool=true,
+                          tags::AbstractDict=Dict{String,Any}(),
+                          aws_config::AbstractAWSConfig=global_aws_config())
+    env = _create_compute_environment_order(envs)
+    args = Dict{String,Any}()
+    enabled || (args["state"] = "DISABLED")
+    isempty(tags) || (args["tags"] = tags)
+    return @mock Batch.create_job_queue(env, name, priority, args; aws_config=aws_config)
+end
 
 
-function compute_environments(queue::JobQueue)
-    ce_order = describe(queue)["computeEnvironmentOrder"]
+"""
+    list_job_queues(;aws_config=global_aws_config())
+
+Get a list of `JobQueue` objects as returned by `Batch.describe_job_queues()`.
+"""
+function list_job_queues(;aws_config::AbstractAWSConfig=global_aws_config())
+    [JobQueue(q["jobQueueArn"]) for q ∈ Batch.describe_job_queues(;aws_config=aws_config)["jobQueues"]]
+end
+
+
+"""
+    compute_environments(queue::JobQueue; aws_config=global_aws_config())
+
+Get a list of `ComputeEnvironment` objects associated with the `JobQueue`.
+"""
+function compute_environments(queue::JobQueue; aws_config::AbstractAWSConfig=global_aws_config())
+    ce_order = describe(queue; aws_config=aws_config)["computeEnvironmentOrder"]
 
     compute_envs = Vector{ComputeEnvironment}(undef, length(ce_order))
     for ce in ce_order
@@ -29,15 +81,16 @@ function compute_environments(queue::JobQueue)
 end
 
 
-function job_queue_arn(queue::AbstractString)
+function job_queue_arn(queue::AbstractString; aws_config::AbstractAWSConfig=global_aws_config())
     startswith(queue, "arn:") && return queue
-    json = describe_job_queue(queue)
+    json = describe_job_queue(queue; aws_config=aws_config)
     isempty(json) ? nothing : json["jobQueueArn"]
 end
 
 
-function describe_job_queue(queue::AbstractString)::OrderedDict
-    json = @mock describe_job_queues(Dict("jobQueues" => [queue]))
+function describe_job_queue(queue::AbstractString;
+                            aws_config::AbstractAWSConfig=global_aws_config())::OrderedDict
+    json = @mock Batch.describe_job_queues(Dict("jobQueues" => [queue]); aws_config=aws_config)
     queues = json["jobQueues"]
     len = length(queues)::Int
     @assert len <= 1

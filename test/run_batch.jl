@@ -1,10 +1,17 @@
-function _register_job_def(config::AWSConfig, input::AbstractArray, expected::AbstractArray)
-    @test input == expected
+function _register_job_def(name, type, input, expected)
+    @test name == expected["jobDefinitionName"]
+    @test type == expected["type"]
+    @test input["parameters"] == expected["parameters"]
+    @test input["containerProperties"] == expected["containerProperties"]
     return REGISTER_JOB_DEF_RESP
 end
 
-function _submit_job(config::AWSConfig, input::AbstractArray, expected::AbstractArray)
-    @test input == expected
+function _submit_job(def, name, queue, input, expected=AbstractDict)
+    @test def == expected["jobDefinition"]
+    @test name == expected["jobName"]
+    @test queue == expected["jobQueue"]
+    @test input["parameters"] == expected["parameters"]
+    @test input["containerOverrides"] == expected["containerOverrides"]
     return SUBMIT_JOB_RESP
 end
 
@@ -17,10 +24,16 @@ end
         end
     end
 
+    queue_arn = "arn:aws:batch:us-east-1:000000000000:job-queue/HighPriority"
+    queue_patch = describe_job_queues_patch(OrderedDict("jobQueueName"=>"HighPriority",
+                                                        "jobQueueArn"=>queue_arn))
+
+    aws_config = global_aws_config()
+
     @testset "From Job Definition" begin
-        expected_job = [
+        expected_job = OrderedDict(
                 "jobName" => "example",
-                "jobQueue" => "HighPriority",
+                "jobQueue" => queue_arn,
                 "jobDefinition" => "arn:aws:batch:us-east-1:012345678910:job-definition/sleep60:1",
                 "parameters" => Dict{String,String}(),
                 "containerOverrides" => Dict(
@@ -28,11 +41,13 @@ end
                     "memory" => 128,
                     "vcpus" => 1,
                 ),
-            ]
+            )
 
         patches = [
-            @patch describe_job_definitions(args...) = DESCRIBE_JOBS_DEF_RESP
-            @patch submit_job(config, input) = _submit_job(config, input, expected_job)
+            queue_patch
+            @patch AWSBatch.Batch.describe_job_definitions(args...; kw...) = DESCRIBE_JOBS_DEF_RESP
+            @patch AWSBatch.Batch.submit_job(def, name, queue, input; kw...) =
+                _submit_job(def, name, queue, input, expected_job)
         ]
 
         apply(patches) do
@@ -43,9 +58,9 @@ end
 
     @testset "From Current Job" begin
         withenv(BATCH_ENVS...) do
-            expected_job = [
+            expected_job = OrderedDict(
                 "jobName" => "example",
-                "jobQueue" => "HighPriority",
+                "jobQueue" => queue_arn,
                 "jobDefinition" => "arn:aws:batch:us-east-1:012345678910:job-definition/sleep60:1",
                 "parameters" => Dict{String,String}(),
                 "containerOverrides" => Dict(
@@ -53,28 +68,29 @@ end
                     "memory" => 128,
                     "vcpus" => 1,
                 ),
-            ]
+            )
 
-            expected_job_def = [
+            expected_job_def = OrderedDict(
                 "type" => "container",
                 "parameters" => Dict{String,String}(),
-                "containerProperties" => [
+                "containerProperties" => OrderedDict(
                     "image" => "busybox",
                     "vcpus" => 1,
                     "memory" => 128,
                     "command" => ["sleep", "60"],
                     "jobRoleArn" => "arn:aws:iam::012345678910:role/sleep60",
-                ],
+                ),
                 "jobDefinitionName" => "sleep60",
-            ]
+            )
 
             patches = [
-                @patch instance_region() = "us-east-1"
-                @patch describe_jobs(args...) = DESCRIBE_JOBS_RESP
-                @patch describe_job_definitions(args...) = Dict("jobDefinitions" => Dict())
-                @patch register_job_definition(config, input) =
-                    _register_job_def(config, input, expected_job_def)
-                @patch submit_job(config, input) = _submit_job(config, input, expected_job)
+                queue_patch
+                @patch AWSBatch.Batch.describe_jobs(args...; kw...) = DESCRIBE_JOBS_RESP
+                @patch AWSBatch.Batch.describe_job_definitions(args...; kw...) = Dict("jobDefinitions" => Dict())
+                @patch AWSBatch.Batch.register_job_definition(name, type, input; kw...) =
+                    _register_job_def(name, type, input, expected_job_def)
+                @patch AWSBatch.Batch.submit_job(def, name, queue, input; kw...) =
+                    _submit_job(def, name, queue, input, expected_job)
             ]
 
             apply(patches) do
@@ -86,9 +102,9 @@ end
 
     @testset "Using a Job Definition" begin
         withenv(BATCH_ENVS...) do
-            expected_job = [
+            expected_job = OrderedDict(
                 "jobName" => "example",
-                "jobQueue" => "HighPriority",
+                "jobQueue" => queue_arn,
                 "jobDefinition" => "arn:aws:batch:us-east-1:012345678910:job-definition/sleep60:1",
                 "parameters" => Dict{String,String}(),
                 "containerOverrides" => Dict(
@@ -96,13 +112,14 @@ end
                     "memory" => 128,
                     "vcpus" => 1,
                 ),
-            ]
+            )
 
             patches = [
-                @patch instance_region() = "us-east-1"
-                @patch describe_jobs(args...) = DESCRIBE_JOBS_RESP
-                @patch describe_job_definitions(args...) = Dict("jobDefinitions" => Dict())
-                @patch submit_job(config, input) = _submit_job(config, input, expected_job)
+                queue_patch
+                @patch AWSBatch.Batch.describe_jobs(args...; kw...) = DESCRIBE_JOBS_RESP
+                @patch AWSBatch.Batch.describe_job_definitions(args...; kw...) = Dict("jobDefinitions" => Dict())
+                @patch AWSBatch.Batch.submit_job(def, name, queue, input; kw...) =
+                    _submit_job(def, name, queue, input, expected_job)
             ]
 
             apply(patches) do

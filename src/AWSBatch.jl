@@ -1,18 +1,19 @@
 module AWSBatch
 
+using AWS
 using AutoHashEquals
-using AWSCore: AWSException, aws_config
-using AWSSDK.Batch
-using AWSSDK.CloudWatchLogs
-using AWSTools.EC2: instance_region
 using OrderedCollections: OrderedDict
 using Dates
 using Memento
 using Mocking
 
+@service Batch
+@service Cloudwatch_Logs
+
 export BatchJob, ComputeEnvironment, BatchEnvironmentError, BatchJobError
-export JobQueue, JobDefinition, JobState
+export JobQueue, JobDefinition, JobState, LogEvent
 export run_batch, describe, status, status_reason, wait, log_events, isregistered, register, deregister
+export list_job_queues, list_job_definitions, create_compute_environment, create_job_queue
 
 
 const logger = getlogger(@__MODULE__)
@@ -22,7 +23,6 @@ __init__() = Memento.register(logger)
 
 
 include("exceptions.jl")
-include("version.jl")
 include("log_event.jl")
 include("compute_environment.jl")
 include("job_queue.jl")
@@ -72,6 +72,7 @@ function run_batch(;
     num_jobs::Integer=1,
     parameters::Dict{String, String}=Dict{String, String}(),
     allow_job_registration::Bool=true,
+    aws_config::AbstractAWSConfig=global_aws_config(),
 )
     if isa(definition, AbstractString)
         definition = isempty(definition) ? nothing : definition
@@ -79,7 +80,7 @@ function run_batch(;
 
     # Determine if the job definition already exists and update the default job parameters
     if definition !== nothing
-        response = describe_job_definition(definition)
+        response = describe_job_definition(definition; aws_config=aws_config)
         if !isempty(response["jobDefinitions"])
             details = first(response["jobDefinitions"])
 
@@ -101,11 +102,11 @@ function run_batch(;
         job_id = ENV["AWS_BATCH_JOB_ID"]
         job_queue = ENV["AWS_BATCH_JQ_NAME"]
 
-        # Get the zone information from the EC2 instance metadata.
-        isempty(region) && (region = @mock instance_region())
+        # if not specified, get region from the aws_config
+        isempty(region) && (region = aws_config.region)
 
         # Requires permissions to access to "batch:DescribeJobs"
-        response = @mock describe_jobs(Dict("jobs" => [job_id]))
+        response = @mock Batch.describe_jobs([job_id]; aws_config=aws_config)
 
         # Use the job's description to only update fields that are using the default
         # values since explict arguments passed in via `kwargs` have higher priority
@@ -165,8 +166,8 @@ function run_batch(;
                 vcpus=vcpus,
                 memory=memory,
                 cmd=cmd,
-                region=region,
                 parameters=parameters,
+                aws_config=aws_config,
             )
         else
             throw(BatchEnvironmentError(string(
@@ -193,10 +194,9 @@ function run_batch(;
     return submit(
         name,
         definition,
-        queue;
+        JobQueue(queue);
         container=container_overrides,
         parameters=parameters,
-        region=region,
         num_jobs=num_jobs,
     )
 end

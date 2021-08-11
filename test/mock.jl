@@ -97,7 +97,7 @@ const DESCRIBE_JOBS_RESP = Dict(
 )
 
 function describe_compute_environments_patch(output::Vector=[])
-    @patch function AWSBatch.describe_compute_environments(d::Dict)
+    @patch function AWSBatch.Batch.describe_compute_environments(d::Dict; aws_config=aws_config)
         compute_envs = d["computeEnvironments"]
         @assert length(compute_envs) == 1
         ce = first(compute_envs)
@@ -113,7 +113,7 @@ function describe_compute_environments_patch(output::OrderedDict)
 end
 
 function describe_job_queues_patch(output::Vector=[])
-    @patch function AWSBatch.describe_job_queues(d::Dict)
+    @patch function AWSBatch.Batch.describe_job_queues(d::Dict; aws_config=aws_config)
         queues = d["jobQueues"]
         @assert length(queues) == 1
         queue = first(queues)
@@ -136,10 +136,10 @@ function log_events_patches(; log_stream_name="mock_stream", events=[], exceptio
     end
 
     get_log_events_patch = if exception !== nothing
-        @patch get_log_events(; kwargs...) = throw(exception)
+        @patch AWSBatch.Cloudwatch_Logs.get_log_events(args...; kwargs...) = throw(exception)
     else
-        @patch function get_log_events(; kwargs...)
-            if get(kwargs, :nextToken, nothing) === nothing
+        @patch function AWSBatch.Cloudwatch_Logs.get_log_events(grp, stream, params; kwargs...)
+            if get(params, "nextToken", nothing) === nothing
                 Dict("events" => events, "nextForwardToken" => "0")
             else
                 Dict("events" => [], "nextForwardToken" => "0")
@@ -148,7 +148,7 @@ function log_events_patches(; log_stream_name="mock_stream", events=[], exceptio
     end
 
     return [
-        @patch describe_jobs(args...; kwargs...) = job_descriptions
+        @patch AWSBatch.Batch.describe_jobs(args...; kwargs...) = job_descriptions
         get_log_events_patch
     ]
 end

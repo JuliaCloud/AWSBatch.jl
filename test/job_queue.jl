@@ -3,14 +3,17 @@ using OrderedCollections: OrderedDict
 @testset "JobQueue" begin
     @testset "constructor" begin
         arn = "arn:aws:batch:us-east-1:000000000000:job-queue/queue"
-        @test JobQueue(arn).arn == arn
-
         patch = describe_job_queues_patch(
             OrderedDict(
                 "jobQueueName" => "queue-name",
                 "jobQueueArn" => arn,
             )
         )
+
+        apply(patch) do
+            @test JobQueue(arn).arn == arn
+        end
+
         apply(patch) do
             @test JobQueue("queue-name").arn == arn
         end
