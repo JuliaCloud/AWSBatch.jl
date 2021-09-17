@@ -46,7 +46,7 @@ function submit(
     if num_jobs > 1
         # https://docs.aws.amazon.com/batch/latest/userguide/array_jobs.html
         @assert 2 <= num_jobs <= 10_000
-        push!(input, "arrayProperties" => ["size" => num_jobs])
+        push!(input, "arrayProperties" => Dict("size" => num_jobs))
     end
 
     debug(logger, "Input: $input")

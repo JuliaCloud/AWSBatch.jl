@@ -217,3 +217,5 @@ Resources:
 Outputs:
   JobQueueArn:
     Value: !Ref JobQueue
+  JobRoleArn:
+    Value: !GetAtt JobRole.Arn

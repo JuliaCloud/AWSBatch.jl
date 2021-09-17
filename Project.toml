@@ -2,7 +2,7 @@ name = "AWSBatch"
 uuid = "dcae83d4-2881-5875-9d49-e5534165e9c0"
 license = "MIT"
 authors = ["Invenia Technical Computing"]
-version = "2.0.0"
+version = "2.0.1"
 
 [deps]
 AWS = "fbe9abb3-538b-5e4e-ba9e-bc94f4f92ebc"
@@ -15,6 +15,7 @@ Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 
 [compat]
 AWS = "1"
+AWSTools = "2"
 AutoHashEquals = "0.2.0"
 Memento = "0.7, 0.8, 0.9, 0.10, 0.11, 0.12, 0.13, 1"
 Mocking = "0.7"
@@ -22,8 +23,9 @@ OrderedCollections = "1.4"
 julia = "1"
 
 [extras]
+AWSTools = "83bcdc74-1232-581c-948a-f29122bf8259"
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["HTTP", "Test"]
+test = ["AWSTools", "HTTP", "Test"]
