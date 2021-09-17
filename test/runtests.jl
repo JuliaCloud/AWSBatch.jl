@@ -1,4 +1,5 @@
 using AWS
+using AWSTools.CloudFormation: stack_output
 using AWSBatch
 using Dates
 using HTTP: HTTP
@@ -10,10 +11,6 @@ using Test
 using AWS.AWSExceptions: AWSException
 
 Mocking.activate()
-
-# need to define these to make sure we don't inadvertently try to talk to AWS
-ENV["AWS_ACCESS_KEY_ID"] = ""
-ENV["AWS_SECRET_ACCESS_KEY"] = ""
 
 # Controls the running of various tests: "local", "batch"
 const TESTS = strip.(split(get(ENV, "TESTS", "local"), r"\s*,\s*"))
@@ -76,12 +73,15 @@ include("mock.jl")
 
 @testset "AWSBatch.jl" begin
     if "local" in TESTS
-        include("compute_environment.jl")
-        include("job_queue.jl")
-        include("log_event.jl")
-        include("job_state.jl")
-        include("batch_job.jl")
-        include("run_batch.jl")
+        # need to define these to make sure we don't inadvertently try to talk to AWS
+        withenv("AWS_ACCESS_KEY_ID" => "", "AWS_SECRET_ACCESS_KEY" => "") do
+            include("compute_environment.jl")
+            include("job_queue.jl")
+            include("log_event.jl")
+            include("job_state.jl")
+            include("batch_job.jl")
+            include("run_batch.jl")
+        end
     else
         warn(logger, "Skipping \"local\" tests. Set `ENV[\"TESTS\"] = \"local\"` to run.")
     end
