@@ -53,6 +53,11 @@ end
         apply(patches) do
             job = run_batch(; name="example", definition="sleep60", queue="HighPriority")
             @test job.id == "24fa2d7a-64c4-49d2-8b47-f8da4fbde8e9"
+
+            job = run_batch(;
+                name="example", definition="sleep60", queue="HighPriority", num_jobs=4
+            )
+            @test job.id == "24fa2d7a-64c4-49d2-8b47-f8da4fbde8e9"
         end
     end
 
