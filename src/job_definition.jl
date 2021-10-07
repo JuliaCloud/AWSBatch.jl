@@ -150,7 +150,7 @@ Get a list of `JobDefinition` objects via `Batch.decsribe_job_definitions()`.
 function list_job_definitions(;aws_config::AbstractAWSConfig=global_aws_config())
     job_definitions = Batch.describe_job_definitions(; aws_config=aws_config)["jobDefinitions"]
     
-    return [JobDefintiion(jd["jobDefinitionArn"]) for jd in job_definitions]
+    return [JobDefinition(jd["jobDefinitionArn"]) for jd in job_definitions]
 end
 
 """
