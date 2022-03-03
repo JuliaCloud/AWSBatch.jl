@@ -12,15 +12,15 @@ using Mocking
 
 export BatchJob, ComputeEnvironment, BatchEnvironmentError, BatchJobError
 export JobQueue, JobDefinition, JobState, LogEvent
-export run_batch, describe, status, status_reason, wait, log_events, isregistered, register, deregister
+export run_batch,
+    describe, status, status_reason, wait, log_events, isregistered, register, deregister
 export list_job_queues, list_job_definitions, create_compute_environment, create_job_queue
-
+export terminate_jobs
 
 const logger = getlogger(@__MODULE__)
 # Register the module level logger at runtime so that folks can access the logger via `getlogger(MyModule)`
 # NOTE: If this line is not included then the precompiled `MyModule.logger` won't be registered at runtime.
 __init__() = Memento.register(logger)
-
 
 include("exceptions.jl")
 include("log_event.jl")
@@ -29,7 +29,7 @@ include("job_queue.jl")
 include("job_state.jl")
 include("job_definition.jl")
 include("batch_job.jl")
-
+include("utilities.jl")
 
 """
     run_batch(;
@@ -63,14 +63,14 @@ function run_batch(;
     name::AbstractString="",
     queue::AbstractString="",
     region::AbstractString="",
-    definition::Union{AbstractString, JobDefinition, Nothing}=nothing,
+    definition::Union{AbstractString,JobDefinition,Nothing}=nothing,
     image::AbstractString="",
     vcpus::Integer=1,
     memory::Integer=-1,
     role::AbstractString="",
     cmd::Cmd=``,
     num_jobs::Integer=1,
-    parameters::Dict{String, String}=Dict{String, String}(),
+    parameters::Dict{String,String}=Dict{String,String}(),
     allow_job_registration::Bool=true,
     aws_config::AbstractAWSConfig=global_aws_config(),
 )
@@ -134,13 +134,15 @@ function run_batch(;
 
     # Error if required parameters were not explicitly set and cannot be inferred
     if isempty(name) || isempty(queue) || memory < 0
-        throw(BatchEnvironmentError(
-            "Unable to perform AWS Batch introspection when not running within " *
-            "an AWS Batch job. Current job parameters are: " *
-            "\nname=$name" *
-            "\nqueue=$queue" *
-            "\nmemory=$memory"
-        ))
+        throw(
+            BatchEnvironmentError(
+                "Unable to perform AWS Batch introspection when not running within " *
+                "an AWS Batch job. Current job parameters are: " *
+                "\nname=$name" *
+                "\nqueue=$queue" *
+                "\nmemory=$memory",
+            ),
+        )
     end
 
     # Reuse a previously registered job definition if available.
@@ -151,7 +153,7 @@ function run_batch(;
             definition = JobDefinition(reusable_job_definition_arn)
         end
     elseif definition === nothing
-         # Use the job name as the definiton name since the definition name was not specified
+        # Use the job name as the definiton name since the definition name was not specified
         definition = name
     end
 
@@ -170,26 +172,26 @@ function run_batch(;
                 aws_config=aws_config,
             )
         else
-            throw(BatchEnvironmentError(string(
-                "Attempting to register job definition \"$definition\" but registering ",
-                "job definitions is disallowed. Current job definition parameters are: ",
-                "\nimage=$image",
-                "\nrole=$role",
-                "\nvcpus=$vcpus",
-                "\nmemory=$memory",
-                "\ncmd=$cmd",
-                "\nparameters=$parameters",
-            )))
+            throw(
+                BatchEnvironmentError(
+                    string(
+                        "Attempting to register job definition \"$definition\" but registering ",
+                        "job definitions is disallowed. Current job definition parameters are: ",
+                        "\nimage=$image",
+                        "\nrole=$role",
+                        "\nvcpus=$vcpus",
+                        "\nmemory=$memory",
+                        "\ncmd=$cmd",
+                        "\nparameters=$parameters",
+                    ),
+                ),
+            )
         end
     end
 
     # Parameters that can be overridden are `memory`, `vcpus`, `command`, and `environment`
     # See https://docs.aws.amazon.com/batch/latest/APIReference/API_ContainerOverrides.html
-    container_overrides = Dict(
-        "vcpus" => vcpus,
-        "memory" => memory,
-        "command" => cmd.exec,
-    )
+    container_overrides = Dict("vcpus" => vcpus, "memory" => memory, "command" => cmd.exec)
 
     return submit(
         name,
