@@ -1,4 +1,5 @@
 using AWS
+using AWS.AWSExceptions: AWSException
 using AWSTools.CloudFormation: stack_output
 using AWSBatch
 using Dates
@@ -7,8 +8,6 @@ using Memento
 using Memento.TestUtils: @test_log, @test_nolog
 using Mocking
 using Test
-
-using AWS.AWSExceptions: AWSException
 
 Mocking.activate()
 
@@ -81,6 +80,7 @@ include("mock.jl")
             include("job_state.jl")
             include("batch_job.jl")
             include("run_batch.jl")
+            include("utilities.jl")
         end
     else
         warn(logger, "Skipping \"local\" tests. Set `ENV[\"TESTS\"] = \"local\"` to run.")
