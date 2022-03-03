@@ -2,7 +2,7 @@ name = "AWSBatch"
 uuid = "dcae83d4-2881-5875-9d49-e5534165e9c0"
 license = "MIT"
 authors = ["Invenia Technical Computing"]
-version = "2.0.1"
+version = "2.1.0"
 
 [deps]
 AWS = "fbe9abb3-538b-5e4e-ba9e-bc94f4f92ebc"
